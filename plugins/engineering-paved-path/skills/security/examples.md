@@ -1,723 +1,400 @@
-# Security Code Examples — Unsafe vs Safe Patterns
+# Security code examples — unsafe vs safe patterns
 
-Each section shows a vulnerable pattern and its secure replacement, tailored to the Quick Blog stack (React 19, Express 5, MongoDB/Mongoose 8, JWT).
+Each section shows a vulnerable pattern and its secure replacement for an Angular frontend and a NestJS API on MongoDB (Mongoose). The domain is a neutral one: users, orders, notes.
 
 ---
 
-## 1. MongoDB NoSQL Injection
+## 1. MongoDB operator injection
 
-### UNSAFE — Operator injection via JSON body
+### UNSAFE — raw body in a filter
 
-```javascript
-// POST /api/admin/login  body: { email: "admin@blog.com", password: { "$gt": "" } }
-// The $gt operator makes the query match ANY password
-
-export const adminLogin = async (req, res) => {
-  const { email, password } = req.body
-  const user = await User.findOne({ email, password }) // password could be an operator object!
-  if (!user) return res.status(401).json({ error: 'Invalid credentials' })
-  const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET)
-  res.json({ token })
+```ts
+@Post('login')
+async login(@Body() body: any) {
+  // body.password can be { "$ne": null }: matches any user
+  const user = await this.users.findOne({ email: body.email, password: body.password });
+  if (!user) throw new UnauthorizedException();
+  return this.tokens.issue(user);
 }
 ```
 
-### SAFE — Type casting + bcrypt comparison
+### SAFE — typed DTO, global whitelist, hash comparison
 
-```javascript
-export const adminLogin = async (req, res) => {
-  const email = String(req.body.email)    // Force string type
-  const password = String(req.body.password) // Force string type — neutralizes operators
+```ts
+// main.ts (or configureApp)
+app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
 
-  const user = await User.findOne({ email, isActive: true })
-  if (!user || !(await user.comparePassword(password))) {
-    return res.status(401).json({ error: 'Invalid credentials' }) // Same message for both
+export class LoginDto {
+  @IsEmail() email: string;
+  @IsString() @Length(12, 128) password: string;
+}
+
+@Post('login')
+@HttpCode(HttpStatus.OK)
+login(@Body() dto: LoginDto) {
+  return this.auth.login(dto.email, dto.password); // service: findOne({ email }), then compare the hash
+}
+```
+
+**Why it works:** the pipe rejects objects where strings are expected, and the password is never part of the query.
+
+---
+
+## 2. XSS — bypassing Angular's sanitizer
+
+### UNSAFE — trusting user content
+
+```ts
+@Component({ template: `<div [innerHTML]="body"></div>` })
+export class NoteView {
+  private readonly sanitizer = inject(DomSanitizer);
+  note = input.required<Note>();
+  get body() {
+    return this.sanitizer.bypassSecurityTrustHtml(this.note().html); // user-authored HTML runs as-is
   }
-
-  const token = jwt.sign(
-    { userId: user._id, email: user.email, name: user.name, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: '7d', algorithm: 'HS256' }
-  )
-  res.json({ success: true, token, user: user.toJSON() })
 }
 ```
 
-**Why it works:** `String({ "$gt": "" })` becomes `"[object Object]"` — a harmless string that won't match any password hash. The real defense is bcrypt comparison, which never puts the password in a query.
+### SAFE — let Angular sanitize, or sanitize before trusting
+
+```ts
+@Component({ template: `<div [innerHTML]="note().html"></div>` }) // Angular strips scripts and handlers
+export class NoteView {
+  note = input.required<Note>();
+}
+
+// Only when rich HTML must survive Angular's sanitizer:
+const clean = DOMPurify.sanitize(note.html, { ALLOWED_TAGS: ['b', 'i', 'a', 'p', 'ul', 'li'], ALLOWED_ATTR: ['href'] });
+const trusted = sanitizer.bypassSecurityTrustHtml(clean);
+```
 
 ---
 
-## 2. Cross-Site Scripting (XSS)
+## 3. XSS — writing to the DOM directly
 
-### UNSAFE — Rendering unsanitized HTML content
+### UNSAFE
 
-```jsx
-// Blog post content from database (could contain stored XSS)
-function BlogPost({ blog }) {
-  return (
-    <article>
-      <h1>{blog.title}</h1>
-      {/* VULNERABLE — content could be: <img src=x onerror=alert(document.cookie)> */}
-      <div dangerouslySetInnerHTML={{ __html: blog.content }} />
-    </article>
-  )
+```ts
+private readonly host = inject(ElementRef<HTMLElement>);
+render(message: string) {
+  this.host.nativeElement.innerHTML = message; // no sanitization at all
 }
 ```
 
-### SAFE — DOMPurify sanitization
+### SAFE
 
-```jsx
-import DOMPurify from 'dompurify'
-
-function BlogPost({ blog }) {
-  // Sanitize once, memoize for performance
-  const sanitizedContent = useMemo(
-    () => DOMPurify.sanitize(blog.content, {
-      ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'a', 'h2', 'h3', 'blockquote', 'code', 'pre'],
-      ALLOWED_ATTR: ['href', 'target', 'rel'],
-      ALLOW_DATA_ATTR: false
-    }),
-    [blog.content]
-  )
-
-  return (
-    <article>
-      <h1>{blog.title}</h1> {/* React auto-escapes this — safe */}
-      <div dangerouslySetInnerHTML={{ __html: sanitizedContent }} />
-    </article>
-  )
-}
+```ts
+protected readonly message = signal('');
+// template: <p>{{ message() }}</p>  — interpolation escapes the text
 ```
-
-**Why it works:** DOMPurify strips all script tags, event handlers, and dangerous attributes. The allowlist approach only permits known-safe HTML elements.
 
 ---
 
-## 3. URL-Based XSS
+## 4. URL-based XSS and open redirects
 
-### UNSAFE — Rendering user-provided URLs without validation
+### UNSAFE
 
-```jsx
-// Comment with a link — user could submit: javascript:alert(document.cookie)
-function CommentLink({ url, text }) {
-  return <a href={url}>{text}</a>
-}
+```ts
+const next = this.route.snapshot.queryParamMap.get('next')!;
+window.location.href = next; // javascript:… or https://evil.example
 ```
 
-### SAFE — Protocol validation
+### SAFE — internal paths only
 
-```jsx
-function CommentLink({ url, text }) {
-  const safeUrl = useMemo(() => {
+```ts
+const next = this.route.snapshot.queryParamMap.get('next') ?? '/';
+const safe = next.startsWith('/') && !next.startsWith('//') ? next : '/';
+this.router.navigateByUrl(safe);
+```
+
+---
+
+## 5. JWT signing and verification
+
+### UNSAFE
+
+```ts
+JwtModule.register({ secret: 'secret' }); // weak, hard-coded, no expiry
+const payload = this.jwt.decode(token);   // no signature check
+```
+
+### SAFE
+
+```ts
+JwtModule.registerAsync({
+  inject: [ConfigService],
+  useFactory: (config: ConfigService) => ({
+    secret: config.getOrThrow<string>('JWT_SECRET'), // ≥ 32 random bytes, validated at startup
+    signOptions: { algorithm: 'HS256', expiresIn: '15m' },
+    verifyOptions: { algorithms: ['HS256'] },
+  }),
+});
+
+const payload = await this.jwt.verifyAsync<TokenPayload>(token);
+```
+
+---
+
+## 6. Guards — fail open vs fail closed
+
+### UNSAFE
+
+```ts
+@Injectable()
+export class AuthGuard implements CanActivate {
+  async canActivate(ctx: ExecutionContext) {
     try {
-      const parsed = new URL(url)
-      // Only allow http and https protocols
-      return ['http:', 'https:'].includes(parsed.protocol) ? url : '#'
+      const req = ctx.switchToHttp().getRequest();
+      req.user = await this.jwt.verifyAsync(extractToken(req));
     } catch {
-      return '#' // Invalid URL
+      // logged and ignored
     }
-  }, [url])
-
-  return (
-    <a href={safeUrl} rel="noopener noreferrer" target="_blank">
-      {text}
-    </a>
-  )
-}
-```
-
-**Why it works:** `new URL('javascript:alert(1)')` parses successfully with `protocol: 'javascript:'`, which the allowlist rejects. `rel="noopener noreferrer"` prevents the opened page from accessing `window.opener`.
-
----
-
-## 4. JWT Implementation
-
-### UNSAFE — Weak secret, no expiry, no algorithm pinning
-
-```javascript
-// Secret is short, predictable, and hardcoded
-const token = jwt.sign({ userId: user._id }, 'secret123')
-
-// Verification doesn't check algorithm — vulnerable to "none" algorithm attack
-const decoded = jwt.decode(token) // decode() does NOT verify! Just parses base64
-```
-
-### SAFE — Strong secret, explicit settings
-
-```javascript
-// Signing
-const token = jwt.sign(
-  { userId: user._id, email: user.email, name: user.name, role: user.role },
-  process.env.JWT_SECRET, // 256+ bit secret from environment
-  {
-    expiresIn: '7d',
-    algorithm: 'HS256' // Pin algorithm to prevent confusion attacks
-  }
-)
-
-// Verification — jwt.verify() checks signature AND expiration
-try {
-  const decoded = jwt.verify(token, process.env.JWT_SECRET)
-  req.user = decoded
-  next()
-} catch (err) {
-  if (err.name === 'TokenExpiredError') {
-    return res.status(401).json({ error: 'Token expired' })
-  }
-  return res.status(401).json({ error: 'Invalid token' })
-}
-```
-
-**Why it works:** `jwt.verify()` cryptographically validates the signature (unlike `jwt.decode()` which just parses). Pinning `algorithm: 'HS256'` prevents the "none" algorithm attack where an attacker forges tokens with no signature.
-
----
-
-## 5. File Upload Validation
-
-### UNSAFE — No validation, user-controlled filename
-
-```javascript
-const storage = multer.diskStorage({
-  destination: 'uploads/',
-  filename: (req, file, cb) => {
-    cb(null, file.originalname) // User controls filename: "../../etc/passwd"
-  }
-})
-
-const upload = multer({ storage }) // No file filter, no size limit
-```
-
-### SAFE — Full validation pipeline
-
-```javascript
-import multer from 'multer'
-import path from 'path'
-import crypto from 'crypto'
-import fs from 'fs'
-
-const uploadDir = 'uploads/blogs'
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true })
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    // Server-generated name — unpredictable, no traversal possible
-    const uniqueName = `blog-${Date.now()}-${crypto.randomInt(100000000, 999999999)}`
-    const ext = path.extname(file.originalname).toLowerCase()
-    cb(null, `${uniqueName}${ext}`)
-  }
-})
-
-const fileFilter = (req, file, cb) => {
-  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
-  if (allowedTypes.includes(file.mimetype)) {
-    cb(null, true)
-  } else {
-    cb(new Error('Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed.'), false)
+    return true; // always lets the request through
   }
 }
-
-export const upload = multer({
-  storage,
-  fileFilter,
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB max
-    files: 1                    // Single file only
-  }
-})
 ```
 
-**Why it works:** Server-generated filenames eliminate path traversal. MIME type allowlisting blocks executables. Size limits prevent storage abuse. The `files: 1` limit prevents multipart abuse.
+### SAFE — deny by default, explicit public routes
 
----
+```ts
+export const Public = () => SetMetadata('isPublic', true);
 
-## 6. Auth Middleware — Missing Checks
+@Injectable()
+export class AuthGuard implements CanActivate {
+  constructor(private readonly jwt: JwtService, private readonly reflector: Reflector) {}
 
-### UNSAFE — Incomplete auth with fail-open
-
-```javascript
-export const auth = (req, res, next) => {
-  const token = req.headers.authorization
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET)
-    req.user = decoded
-  } catch (err) {
-    console.log('Auth error') // Logs but doesn't return!
-  }
-  next() // ALWAYS calls next — even when auth fails!
-}
-```
-
-### SAFE — Fail-closed with specific error messages
-
-```javascript
-export const auth = (req, res, next) => {
-  const authHeader = req.headers.authorization
-  if (!authHeader) {
-    return res.status(401).json({ success: false, message: 'No token provided' })
-  }
-
-  const token = authHeader.startsWith('Bearer ')
-    ? authHeader.split(' ')[1]
-    : authHeader
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET)
-    req.user = decoded
-    next() // Only reaches here if verification succeeds
-  } catch (err) {
-    if (err.name === 'TokenExpiredError') {
-      return res.status(401).json({ success: false, message: 'Token expired' })
+  async canActivate(ctx: ExecutionContext): Promise<boolean> {
+    const isPublic = this.reflector.getAllAndOverride<boolean>('isPublic', [ctx.getHandler(), ctx.getClass()]);
+    if (isPublic) return true;
+    const req = ctx.switchToHttp().getRequest();
+    const token = extractToken(req);
+    if (!token) throw new UnauthorizedException();
+    try {
+      req.user = await this.jwt.verifyAsync(token);
+    } catch {
+      throw new UnauthorizedException();
     }
-    return res.status(401).json({ success: false, message: 'Invalid token' })
+    return true;
+  }
+}
+
+// app.module.ts
+providers: [{ provide: APP_GUARD, useClass: AuthGuard }];
+```
+
+---
+
+## 7. Error handling — leaking internals
+
+### UNSAFE
+
+```ts
+@Catch()
+export class AllErrorsFilter implements ExceptionFilter {
+  catch(error: Error, host: ArgumentsHost) {
+    host.switchToHttp().getResponse().status(500).json({ message: error.message, stack: error.stack });
   }
 }
 ```
 
-**Why it works:** The `return` before each error response ensures `next()` is only called on successful verification. This is the fail-closed pattern — errors deny access rather than granting it.
+### SAFE — map known errors, keep unknown ones generic
 
----
-
-## 7. Error Handling — Stack Trace Leak
-
-### UNSAFE — Exposing internals to client
-
-```javascript
-app.use((err, req, res, next) => {
-  res.status(500).json({
-    error: err.message,     // Could reveal: "Cannot read property of undefined at /app/src/..."
-    stack: err.stack,       // Full file paths, line numbers, dependency versions
-    query: req.query,       // Could echo back malicious input
-    env: process.env.NODE_ENV // Confirms environment to attacker
-  })
-})
-```
-
-### SAFE — Generic client response, detailed internal logging
-
-```javascript
-app.use((err, req, res, next) => {
-  // Log full details internally
-  logger.error({
-    event: 'unhandled_error',
-    error: err.message,
-    stack: err.stack,
-    method: req.method,
-    url: req.url,
-    ip: req.ip,
-    userId: req.user?.userId
-  })
-
-  // Send minimal info to client
-  const statusCode = err.statusCode || 500
-  res.status(statusCode).json({
-    success: false,
-    message: statusCode === 500 ? 'Internal Server Error' : err.message,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  })
-})
-```
-
-**Why it works:** Production clients see a generic message. Stack traces are only included in development mode. Full error details are logged server-side for debugging.
-
----
-
-## 8. Access Control — IDOR
-
-### UNSAFE — No ownership check
-
-```javascript
-// DELETE /api/blog/delete/123 — any authenticated user can delete any blog
-export const deleteBlog = asyncHandler(async (req, res) => {
-  const blog = await Blog.findByIdAndDelete(req.params.id)
-  if (!blog) return res.status(404).json({ error: 'Blog not found' })
-  res.json({ success: true, message: 'Blog deleted' })
-})
-```
-
-### SAFE — Verify ownership or admin role
-
-```javascript
-export const deleteBlog = asyncHandler(async (req, res) => {
-  const blog = await Blog.findById(req.params.id)
-  if (!blog) {
-    return res.status(404).json({ success: false, message: 'Blog not found' })
+```ts
+@Catch(DomainError)
+export class DomainErrorFilter implements ExceptionFilter {
+  private readonly logger = new Logger(DomainErrorFilter.name);
+  catch(error: DomainError, host: ArgumentsHost) {
+    this.logger.warn(`${error.code}: ${error.message}`);
+    const status = error.code === 'NOT_FOUND' ? 404 : 400;
+    host.switchToHttp().getResponse().status(status).json({ statusCode: status, message: error.publicMessage });
   }
-
-  // Authorization: only the author or an admin can delete
-  const isOwner = blog.author.toString() === req.user.userId
-  const isAdmin = req.user.role === 'admin'
-  if (!isOwner && !isAdmin) {
-    return res.status(403).json({ success: false, message: 'Not authorized' })
-  }
-
-  // Clean up uploaded image
-  if (blog.image) {
-    const filename = path.basename(blog.image)
-    const filePath = path.resolve('uploads/blogs', filename)
-    if (filePath.startsWith(path.resolve('uploads/blogs'))) {
-      fs.unlink(filePath, (err) => {
-        if (err) logger.error({ event: 'file_delete_failed', filename, error: err.message })
-      })
-    }
-  }
-
-  await blog.deleteOne()
-  res.json({ success: true, message: 'Blog deleted' })
-})
-```
-
-**Why it works:** Separating the find and delete operations allows an ownership check in between. The `.toString()` on ObjectId ensures proper comparison. Admin role provides an escape hatch for moderation.
-
----
-
-## 9. Password Storage
-
-### UNSAFE — Reversible or weak hashing
-
-```javascript
-// MD5 — broken, rainbow tables exist for all common passwords
-import crypto from 'crypto'
-const hash = crypto.createHash('md5').update(password).digest('hex')
-
-// SHA-256 — fast hash, not designed for passwords (billions per second on GPU)
-const hash = crypto.createHash('sha256').update(password).digest('hex')
-
-// Plain text — the worst option
-user.password = req.body.password
-```
-
-### SAFE — bcrypt with pre-save hook
-
-```javascript
-import bcrypt from 'bcryptjs'
-
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next()
-  const salt = await bcrypt.genSalt(10)
-  this.password = await bcrypt.hash(this.password, salt)
-  next()
-})
-
-userSchema.methods.comparePassword = async function(candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password)
 }
+// Everything else falls through to Nest's default filter: a generic 500 without a stack trace.
+```
 
-// CRITICAL — never return password in API responses
-userSchema.methods.toJSON = function() {
-  const obj = this.toObject()
-  delete obj.password
-  return obj
+---
+
+## 8. Access control — IDOR
+
+### UNSAFE
+
+```ts
+@Delete(':id')
+remove(@Param('id') id: string) {
+  return this.notes.deleteOne({ _id: id }); // any authenticated user deletes any note
 }
 ```
 
-**Why it works:** bcrypt is purposefully slow (~100ms per hash at cost 10), making brute force infeasible. The pre-save hook ensures every password write goes through hashing. `toJSON` strips the hash from all API responses automatically.
+### SAFE — ownership in the query, 404 for others
 
----
+```ts
+@Delete(':id')
+@HttpCode(HttpStatus.NO_CONTENT)
+async remove(@Param('id', ObjectIdPipe) id: string, @CurrentUser() user: Principal) {
+  await this.notesService.remove(id, user.id);
+}
 
-## 10. CORS Configuration
-
-### UNSAFE — Wildcard with credentials
-
-```javascript
-// Browsers actually reject this combination, but it shows the wrong mindset
-app.use(cors({
-  origin: '*',
-  credentials: true
-}))
-
-// Even worse — reflect the requester's origin (any site can make credentialed requests)
-app.use(cors({
-  origin: true,
-  credentials: true
-}))
-```
-
-### SAFE — Explicit allowlist with validation
-
-```javascript
-const allowedOrigins = [
-  process.env.CLIENT_URL,   // Production frontend URL
-  ...(process.env.NODE_ENV === 'development'
-    ? ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175']
-    : [])
-].filter(Boolean)
-
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (server-to-server, Postman)
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true)
-    } else {
-      callback(new Error('Not allowed by CORS'))
-    }
-  },
-  credentials: true
-}))
-```
-
-**Why it works:** Only explicitly listed origins can make credentialed cross-origin requests. Development origins are only included when `NODE_ENV` is `development`. The `filter(Boolean)` removes undefined values if `CLIENT_URL` isn't set.
-
----
-
-## 11. Command Injection
-
-### UNSAFE — Shell execution with user input
-
-```javascript
-import { exec } from 'child_process'
-
-// Image processing with user-controlled filename
-// Attacker uploads file named: "image.jpg; rm -rf /"
-export const processImage = (req, res) => {
-  exec(`convert uploads/${req.file.originalname} -resize 800x600 output.jpg`, (err) => {
-    if (err) return res.status(500).json({ error: 'Processing failed' })
-    res.json({ success: true })
-  })
+// service
+async remove(id: string, ownerId: string) {
+  const { deletedCount } = await this.notes.deleteOne({ _id: id, ownerId });
+  if (deletedCount === 0) throw new NotFoundException();
 }
 ```
 
-### SAFE — execFile with argument array
+---
 
-```javascript
-import { execFile } from 'child_process'
+## 9. Password storage
 
-export const processImage = (req, res) => {
-  const inputPath = path.join('uploads/blogs', path.basename(req.file.filename))
-  const outputPath = path.join('uploads/blogs', `thumb-${req.file.filename}`)
+### UNSAFE
 
-  // execFile does NOT spawn a shell — semicolons, pipes, etc. are treated as literal characters
-  execFile('convert', [inputPath, '-resize', '800x600', outputPath], (err) => {
-    if (err) return res.status(500).json({ error: 'Processing failed' })
-    res.json({ success: true })
-  })
+```ts
+const hash = createHash('sha256').update(dto.password).digest('hex'); // fast, unsalted
+```
+
+### SAFE
+
+```ts
+const hash = await argon2.hash(dto.password, { type: argon2.argon2id });
+// or: await bcrypt.hash(dto.password, 12)
+const ok = await argon2.verify(user.passwordHash, dto.password);
+```
+
+Response shapes never include the hash; map the document to a response DTO.
+
+---
+
+## 10. CORS
+
+### UNSAFE
+
+```ts
+app.enableCors({ origin: true, credentials: true }); // reflects any origin, with cookies
+```
+
+### SAFE
+
+```ts
+const origins = config.getOrThrow<string>('CORS_ORIGINS').split(',');
+app.enableCors({ origin: origins, credentials: true });
+```
+
+---
+
+## 11. Command injection
+
+### UNSAFE
+
+```ts
+exec(`convert ${dto.fileName} out.png`); // fileName = "x; rm -rf /"
+```
+
+### SAFE
+
+```ts
+execFile('convert', [path.basename(dto.fileName), 'out.png']);
+```
+
+---
+
+## 12. Rate limiting
+
+### UNSAFE — unlimited login attempts
+
+```ts
+@Post('login')
+login(@Body() dto: LoginDto) { /* … */ }
+```
+
+### SAFE — `@nestjs/throttler`
+
+```ts
+// app.module.ts
+imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }])],
+providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+
+// auth.controller.ts
+@Throttle({ default: { ttl: 15 * 60_000, limit: 5 } })
+@Post('login')
+login(@Body() dto: LoginDto) { /* … */ }
+```
+
+---
+
+## 13. Mass assignment
+
+### UNSAFE
+
+```ts
+@Patch(':id')
+update(@Param('id') id: string, @Body() body: Record<string, unknown>, @CurrentUser() user: Principal) {
+  return this.users.updateOne({ _id: id }, body); // body.role = 'admin'
 }
 ```
 
-**Why it works:** `execFile` passes arguments directly to the process without shell interpretation. Characters like `;`, `|`, `&&`, and backticks are treated as literal text, not shell metacharacters.
+### SAFE
 
----
-
-## 12. Rate Limiting
-
-### UNSAFE — No rate limiting on sensitive endpoint
-
-```javascript
-// Login endpoint with no rate limit — attacker can try millions of passwords
-adminRouter.post('/login', adminLogin)
-
-// Comment endpoint with no rate limit — bot can flood with spam
-blogRouter.post('/add-comment', validateComment, addComment)
-```
-
-### SAFE — Endpoint-specific rate limiters
-
-```javascript
-import rateLimit from 'express-rate-limit'
-
-export const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5,                    // 5 attempts
-  message: { success: false, message: 'Too many login attempts, try again in 15 minutes' },
-  standardHeaders: true,
-  legacyHeaders: false
-})
-
-export const commentLimiter = rateLimit({
-  windowMs: 60 * 1000,  // 1 minute
-  max: 5,                // 5 comments
-  message: { success: false, message: 'Too many comments, slow down' },
-  standardHeaders: true,
-  legacyHeaders: false
-})
-
-// Applied in routes
-adminRouter.post('/login', loginLimiter, adminLogin)
-blogRouter.post('/add-comment', commentLimiter, validateComment, addComment)
-```
-
-**Why it works:** `express-rate-limit` tracks requests per IP address within a time window. The `standardHeaders: true` option returns `RateLimit-*` headers so clients know their remaining quota. Different endpoints get different limits based on their abuse potential.
-
----
-
-## 13. Input Validation
-
-### UNSAFE — Raw request body used directly
-
-```javascript
-export const addBlog = asyncHandler(async (req, res) => {
-  // No validation — title could be empty, category could be anything
-  const blog = await Blog.create({
-    ...req.body,           // Mass assignment — client could send { role: 'admin', isPublished: true }
-    author: req.user.userId
-  })
-  res.status(201).json({ success: true, blog })
-})
-```
-
-### SAFE — Explicit field extraction with validation middleware
-
-```javascript
-// Validator middleware
-export const validateBlogInput = (req, res, next) => {
-  const errors = []
-  const { title, description, category } = req.body
-
-  if (!title || title.trim().length < 3) {
-    errors.push('Title must be at least 3 characters')
-  }
-  if (!description || description.trim().length < 10) {
-    errors.push('Description must be at least 10 characters')
-  }
-  if (!category) {
-    errors.push('Category is required')
-  }
-  if (!req.file) {
-    errors.push('Blog image is required')
-  }
-
-  if (errors.length > 0) {
-    return res.status(400).json({ success: false, errors })
-  }
-  next()
+```ts
+export class UpdateProfileDto {
+  @IsOptional() @IsString() @MaxLength(80) displayName?: string;
+  @IsOptional() @IsUrl({ protocols: ['https'] }) avatarUrl?: string;
 }
 
-// Controller — explicit field extraction
-export const addBlog = asyncHandler(async (req, res) => {
-  const { title, description, category } = req.body // Only extract expected fields
-
-  const blog = await Blog.create({
-    title: title.trim(),
-    description: description.trim(),
-    category,
-    image: `/uploads/blogs/${req.file.filename}`,
-    author: req.user.userId,
-    authorName: req.user.name
-  })
-  res.status(201).json({ success: true, blog })
-})
-```
-
-**Why it works:** The validation middleware rejects invalid input before the controller runs. Explicit field destructuring prevents mass assignment — only the expected fields are passed to `Blog.create()`. Server-side validation catches anything that bypasses client-side checks.
-
----
-
-## 14. Sensitive Data in Logs
-
-### UNSAFE — Logging full request bodies
-
-```javascript
-// Logs everything including passwords, tokens, and personal data
-app.use((req, res, next) => {
-  console.log('Request:', {
-    method: req.method,
-    url: req.url,
-    body: req.body, // { email: "user@test.com", password: "MyS3cretP@ss!" }
-    headers: req.headers // { authorization: "Bearer eyJhbGciOi..." }
-  })
-  next()
-})
-```
-
-### SAFE — Redact sensitive fields
-
-```javascript
-const SENSITIVE_FIELDS = ['password', 'token', 'secret', 'authorization', 'creditCard', 'ssn']
-
-const redactBody = (body) => {
-  if (!body || typeof body !== 'object') return body
-  const redacted = { ...body }
-  for (const field of SENSITIVE_FIELDS) {
-    if (redacted[field]) redacted[field] = '***'
-  }
-  return redacted
+@Patch('me')
+update(@Body() dto: UpdateProfileDto, @CurrentUser() user: Principal) {
+  return this.profiles.update(user.id, dto); // whitelist drops role and every unknown field
 }
-
-const redactHeaders = (headers) => {
-  const redacted = { ...headers }
-  if (redacted.authorization) redacted.authorization = 'Bearer ***'
-  if (redacted.cookie) redacted.cookie = '***'
-  return redacted
-}
-
-app.use((req, res, next) => {
-  logger.info({
-    event: 'http_request',
-    method: req.method,
-    url: req.url,
-    ip: req.ip,
-    body: redactBody(req.body),
-    userAgent: req.headers['user-agent']
-    // Don't log full headers — they contain tokens
-  })
-  next()
-})
 ```
-
-**Why it works:** Sensitive fields are replaced with `***` before logging. Authorization headers are masked. The logger only captures what's needed for debugging, not the full request dump.
 
 ---
 
-## 15. Mass Assignment Prevention
+## 14. Sensitive data in logs
 
-### UNSAFE — Spreading entire request body
+### UNSAFE
 
-```javascript
-// User registration — attacker sends: { email, password, role: 'admin', isActive: true }
-export const register = asyncHandler(async (req, res) => {
-  const user = await User.create(req.body) // Accepts ANY field including role!
-  res.status(201).json({ success: true, user })
-})
+```ts
+this.logger.log(`login ${JSON.stringify(dto)}`); // includes the password
 ```
 
-### SAFE — Explicit field extraction
+### SAFE
 
-```javascript
-export const register = asyncHandler(async (req, res) => {
-  const { email, password, name } = req.body // Only expected fields
-
-  const user = await User.create({
-    email,
-    password,
-    name
-    // role defaults to 'author' via schema
-    // isActive defaults to true via schema
-  })
-
-  res.status(201).json({ success: true, user: user.toJSON() })
-})
+```ts
+this.logger.log(`login attempt for ${maskEmail(dto.email)}`);
 ```
-
-**Why it works:** By destructuring only the expected fields, any extra fields sent by the client (like `role` or `isActive`) are silently ignored. Schema defaults handle the rest.
 
 ---
 
-## 16. MongoDB Regex Injection (ReDoS)
+## 15. Credentials sent to the wrong origin (Angular)
 
-### UNSAFE — User input directly in regex
+### UNSAFE
 
-```javascript
-// Search endpoint — attacker sends: query = "(a+)+"
-export const searchBlogs = asyncHandler(async (req, res) => {
-  const blogs = await Blog.find({
-    title: new RegExp(req.query.q, 'i') // ReDoS: catastrophic backtracking
-  })
-  res.json({ success: true, blogs })
-})
+```ts
+export const authInterceptor: HttpInterceptorFn = (req, next) =>
+  next(req.clone({ setHeaders: { Authorization: `Bearer ${inject(Session).token()}` } })); // every URL
 ```
 
-### SAFE — Escape special regex characters
+### SAFE
 
-```javascript
-const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-
-export const searchBlogs = asyncHandler(async (req, res) => {
-  const query = String(req.query.q || '').slice(0, 100) // Type cast + length limit
-  const blogs = await Blog.find({
-    title: new RegExp(escapeRegex(query), 'i') // Special chars escaped
-  }).limit(20)
-
-  res.json({ success: true, blogs })
-})
+```ts
+export const authInterceptor: HttpInterceptorFn = (req, next) => {
+  const api = inject(API_URL);
+  if (!req.url.startsWith(api)) return next(req);
+  return next(req.clone({ setHeaders: { Authorization: `Bearer ${inject(Session).token()}` } }));
+};
 ```
 
-**Why it works:** `escapeRegex` neutralizes all regex metacharacters, preventing an attacker from crafting a pattern that causes catastrophic backtracking. The length limit adds defense in depth. `.limit(20)` prevents memory exhaustion from large result sets.
+---
+
+## 16. Regex injection (ReDoS)
+
+### UNSAFE
+
+```ts
+this.notes.find({ title: new RegExp(query.q, 'i') });
+```
+
+### SAFE
+
+```ts
+const escaped = query.q.slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+this.notes.find({ title: new RegExp(escaped, 'i') }).limit(50);
+```

@@ -26,7 +26,7 @@ Status: the marketplace serves Claude Code only. This document sets the rules th
 ## Target layout
 
 ```
-gm-ai-marketplace/
+gm-ai-marketplace-angular-nestjs/
 ├── .claude-plugin/marketplace.json     Claude Code catalog
 ├── .agents/plugins/marketplace.json    Codex catalog, same marketplace name
 └── plugins/<name>/
@@ -40,11 +40,11 @@ gm-ai-marketplace/
     └── mcp.json                        portable MCP config
 ```
 
-- Use the same marketplace `name` in both catalogs, so `<plugin>@gm-ai-marketplace` works in both tools.
+- Use the same marketplace `name` in both catalogs, so `<plugin>@gm-ai-marketplace-angular-nestjs` works in both tools.
 - Add a script that generates `.claude-plugin/plugin.json` from the root `plugin.json`, and a CI check that the generated file is up to date. One source keeps `version` from drifting between the two manifests.
 - In Codex, plugins are enabled per project in `.codex/config.toml`:
   ```toml
-  [plugins."<plugin>@gm-ai-marketplace"]
+  [plugins."<plugin>@gm-ai-marketplace-angular-nestjs"]
   enabled = true
   ```
 

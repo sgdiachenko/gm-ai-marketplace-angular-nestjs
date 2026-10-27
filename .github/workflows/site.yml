@@ -2,8 +2,10 @@ name: Site
 
 # The catalog site (site/), separate from the marketplace checks in validate.yml:
 # - "Build and test the site" runs on every pull request and push, so its result shows as its own check;
-# - "Deploy to GitHub Pages" publishes the build from main to https://sgdiachenko.github.io/gm-ai-marketplace/.
-# One-time setup: repository Settings → Pages → Source: GitHub Actions.
+# - "Deploy to GitHub Pages" publishes the build from main to https://sgdiachenko.github.io/gm-ai-marketplace-angular-nestjs/,
+#   only when the repository variable PAGES_ENABLED is "true". The repository is private, and Pages for a private
+#   repository needs a paid GitHub plan; without the variable the build is still tested and nothing is deployed.
+# One-time setup to deploy: Settings → Pages → Source: GitHub Actions, then Settings → Variables → PAGES_ENABLED=true.
 
 on:
   pull_request:
@@ -54,7 +56,7 @@ jobs:
         run: node site/build.mjs --out _site | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Upload the site
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && vars.PAGES_ENABLED == 'true'
         uses: actions/upload-pages-artifact@v5
         with:
           path: _site
@@ -62,7 +64,7 @@ jobs:
   deploy:
     name: Deploy to GitHub Pages
     needs: build
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.PAGES_ENABLED == 'true'
     runs-on: ubuntu-latest
     permissions:
       pages: write

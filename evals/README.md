@@ -6,12 +6,12 @@ Behaviour tests for the SDD plugins, in the format of Claude Code's built-in [`c
 
 | Suite | What it checks | Graders | Approximate cost |
 |---|---|---|---|
-| `namespaces` | each skill and agent is reachable by its namespaced name: `engineering-paved-path:<skill>`, `research-tools:researcher`, `architecture-review:architecture-reviewer`, the four `sdd-engineering` agents | `tool_used` only (free) | one run per case |
+| `namespaces` | each skill and agent is reachable by its namespaced name: `engineering-paved-path:<skill>` (an Angular placement question and a NestJS layering question), `research-tools:researcher`, `architecture-review:architecture-reviewer`, the four `sdd-engineering` agents | `tool_used` only (free) | one run per case |
 | `sdd-engineering` | `spec-creator` in analyze mode asks numbered questions and writes no file; `/run-plan` without a plan points to the planner and starts no implementer; a small edit that needs no spec starts no `sdd-engineering` agent or skill (negative case); `spec-creator` refuses to approve a spec whose `must` story has no AC, even with the user's approval, and names the story in its `Coverage:` line (1.1.0) | `tool_used`, `file_exists`, `regex` (free) | two runs per case |
-| `architecture-review` | the reviewer finds a framework import in the domain ring and a concrete repository built in a service, flags filesystem access in the pure core, and approves a harmless rename | `tool_used` + `llm` judge | three runs per case, plus judge calls |
-| `cost-workflow` | the fixed cost scenario of `docs/COST-BASELINE.md`: in a seeded Next.js project, the user asks for a spec and a plan for a small feature; `spec-creator` analyze → write → approve, then `implementation-planner` pass 1 → pass 2; the spec is approved and has AC lines, the plan is saved and has steps | `tool_used`, `tool_order`, `file_exists`, `regex` (free) | three runs; the most expensive suite, since both agents run on Opus |
+| `architecture-review` | on NestJS and Angular fixtures, the reviewer finds a Nest import in a pure domain rule and a Mongoose model queried from a controller, flags filesystem and `process.env` access in a pure rule, flags a `shared/` component importing a feature and calling `HttpClient`, and approves a harmless rename | `tool_used` + `llm` judge | three runs per case, plus judge calls |
+| `cost-workflow` | the fixed cost scenario of `docs/COST-BASELINE.md`: in a seeded Angular project, the user asks for a spec and a plan for a small feature; `spec-creator` analyze → write → approve, then `implementation-planner` pass 1 → pass 2; the spec is approved and has AC lines, the plan is saved and has steps | `tool_used`, `tool_order`, `file_exists`, `regex` (free) | three runs; the most expensive suite, since both agents run on Opus |
 
-The `architecture-review` fixtures are the dev-digest fixtures moved onto the reference layout of `engineering-paved-path:onion-architecture` (`src/domain`, `src/core`, `src/modules/<name>/…`).
+The `architecture-review` fixtures use an Angular `client/` and a NestJS `server/` and the default rules of `engineering-paved-path:nestjs-backend-architecture` and `engineering-paved-path:frontend-architecture`. They replaced the onion-layout fixtures of `gm-ai-marketplace` in 2026-10; no run of this suite on the new fixtures has been recorded yet.
 
 ## Run
 

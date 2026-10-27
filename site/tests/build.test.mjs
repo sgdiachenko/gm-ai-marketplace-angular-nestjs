@@ -57,7 +57,7 @@ test('writes every page, the index and the assets', () => {
 
 test('index.json follows the versioned format', () => {
   assert.equal(index.version, 1);
-  assert.deepEqual(index.marketplace, { name: 'gm-ai-marketplace', repo: 'sgdiachenko/gm-ai-marketplace' });
+  assert.deepEqual(index.marketplace, { name: 'gm-ai-marketplace-angular-nestjs', repo: 'sgdiachenko/gm-ai-marketplace-angular-nestjs' });
   assert.deepEqual(index.categories, ['code-review', 'data', 'workflow']);
   const ids = index.items.map((it) => it.id);
   assert.equal(new Set(ids).size, ids.length, 'ids are unique');
@@ -84,7 +84,7 @@ test('rendered Markdown escapes raw HTML and links to GitHub', () => {
   const html = read('plugins/pr-tools/index.html');
   assert.ok(html.includes('&lt;script&gt;alert'), 'raw HTML is escaped');
   assert.ok(!html.includes('<script>alert'));
-  assert.ok(html.includes('href="https://github.com/sgdiachenko/gm-ai-marketplace/blob/main/docs/installing.md"'));
+  assert.ok(html.includes('href="https://github.com/sgdiachenko/gm-ai-marketplace-angular-nestjs/blob/main/docs/installing.md"'));
   assert.ok(html.includes('src="../../files/plugins/pr-tools/assets/flow.svg"'));
   assert.ok(existsSync(join(out, 'files/plugins/pr-tools/assets/flow.svg')), 'images are copied into the site');
   assert.ok(!/<h[1-6][^>]*>PR Tools</.test(html.split('id="readme-h"')[1]), 'the README title repeating the name is dropped');
@@ -96,8 +96,8 @@ test('pages work under any base path; 404.html uses the absolute one', () => {
   assert.equal((home.match(/<article class="card">/g) ?? []).length, 3, 'the plugin list is pre-rendered');
   assert.ok(read('plugins/pr-tools/skills/review-pr/index.html').includes('href="../../../../assets/site.css"'));
   const notFound = read('404.html');
-  assert.ok(notFound.includes('href="/gm-ai-marketplace/assets/site.css"'));
-  assert.ok(notFound.includes('action="/gm-ai-marketplace/"'));
+  assert.ok(notFound.includes('href="/gm-ai-marketplace-angular-nestjs/assets/site.css"'));
+  assert.ok(notFound.includes('action="/gm-ai-marketplace-angular-nestjs/"'));
   const custom = join(tmp, 'custom-base');
   assert.equal(build(FIXTURE, custom, '--base', '/preview/').status, 0);
   assert.ok(readFileSync(join(custom, '404.html'), 'utf8').includes('href="/preview/assets/site.css"'));

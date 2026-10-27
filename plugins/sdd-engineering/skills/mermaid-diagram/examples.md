@@ -1,85 +1,87 @@
 # Mermaid Diagram Examples
 
-Ready-to-use templates tailored to the Quick Blog stack (React + Express + MongoDB + JWT).
+Ready-to-use templates for an Angular frontend with a NestJS API on MongoDB, using a neutral orders domain. Rename the participants and entities to the project's own.
 
 ---
 
-## 1. Flowchart — Blog Post Creation Flow
+## 1. Flowchart — Order Creation Flow
 
 ```mermaid
 flowchart TD
-    A((User)) --> B[Fill blog form]
-    B --> C{Valid input?}
-    C -->|No| D[Show validation errors]
+    A((User)) --> B[Fill order form]
+    B --> C{Form valid?}
+    C -->|No| D[Show field errors]
     D --> B
-    C -->|Yes| E[Upload image via Multer]
-    E --> F{MIME type valid?}
-    F -->|No| G[Reject file]
+    C -->|Yes| E[Controller calls OrdersApi.create]
+    E --> F{API response}
+    F -->|400| G[Map server errors to fields]
     G --> B
-    F -->|Yes| H[Save to uploads/blogs/]
-    H --> I[Create Blog document in MongoDB]
-    I --> J[Return success response]
+    F -->|201| H[Update the orders signal]
+    H --> I[Navigate to the order page]
 ```
 
 ---
 
-## 2. Sequence Diagram — JWT Authentication Flow
+## 2. Sequence Diagram — Authentication Flow
 
 ```mermaid
 sequenceDiagram
     actor User
-    participant Client as React Client
-    participant Server as Express API
+    participant Client as Angular app
+    participant Server as NestJS API
     participant DB as MongoDB
 
     User->>Client: Enter credentials
-    Client->>Server: POST /api/admin/login
+    Client->>Server: POST /v1/auth/login
     activate Server
-    Server->>DB: findOne({ email, isActive: true })
+    Server->>Server: ValidationPipe checks LoginDto
+    Server->>DB: findOne({ email })
     DB-->>Server: User document
-    Server->>Server: bcrypt.compare(password, hash)
+    Server->>Server: verify password hash
     alt Valid credentials
-        Server->>Server: jwt.sign({ userId, email, role })
-        Server-->>Client: 200 { token, user }
-        Client->>Client: Store token in localStorage
+        Server->>Server: JwtService.signAsync({ sub, role })
+        Server-->>Client: 200, Set-Cookie (HttpOnly)
+        Client->>Client: Session signal = signed in
     else Invalid credentials
-        Server-->>Client: 401 { error: "Invalid credentials" }
+        Server-->>Client: 401 Invalid credentials
     end
     deactivate Server
 ```
 
 ---
 
-## 3. Sequence Diagram — Auth Middleware Chain
+## 3. Sequence Diagram — NestJS Request Pipeline
 
 ```mermaid
 sequenceDiagram
-    participant Client as React Client
-    participant RL as Rate Limiter
-    participant Auth as Auth Middleware
-    participant Val as Validator
-    participant Ctrl as Controller
+    participant Client as Angular app
+    participant Thr as ThrottlerGuard
+    participant Auth as AuthGuard
+    participant Pipe as ValidationPipe
+    participant Ctrl as OrdersController
+    participant Svc as OrdersService
     participant DB as MongoDB
 
-    Client->>RL: POST /api/blog/add
+    Client->>Thr: POST /v1/orders
     alt Rate limit exceeded
-        RL-->>Client: 429 Too Many Requests
+        Thr-->>Client: 429 Too Many Requests
     else Within limit
-        RL->>Auth: Pass through
-        Auth->>Auth: Extract Bearer token
-        Auth->>Auth: jwt.verify(token, secret)
-        alt Token invalid/expired
+        Thr->>Auth: canActivate
+        Auth->>Auth: verify token
+        alt Token invalid or expired
             Auth-->>Client: 401 Unauthorized
         else Token valid
-            Auth->>Val: req.user set, continue
-            Val->>Val: Check title, description, category
+            Auth->>Pipe: request.user set
+            Pipe->>Pipe: validate CreateOrderDto (whitelist)
             alt Validation fails
-                Val-->>Client: 400 { errors: [...] }
+                Pipe-->>Client: 400 { message: [...] }
             else Valid input
-                Val->>Ctrl: next()
-                Ctrl->>DB: Blog.create({...})
-                DB-->>Ctrl: Blog document
-                Ctrl-->>Client: 201 { success: true, blog }
+                Pipe->>Ctrl: create(dto, user)
+                Ctrl->>Svc: place(user.id, dto)
+                Svc->>DB: orders.create({...})
+                DB-->>Svc: Order document
+                Svc-->>Ctrl: OrderResponse
+                Ctrl-->>Client: 201 OrderResponse
             end
         end
     end
@@ -87,154 +89,120 @@ sequenceDiagram
 
 ---
 
-## 4. ER Diagram — Blog Database Schema
+## 4. ER Diagram — Orders Schema
 
 ```mermaid
 erDiagram
     USER {
         ObjectId _id PK
         string email UK "unique, lowercase"
-        string password "bcrypt hash"
-        string name
-        string role "enum: admin, author"
-        boolean isActive "soft delete"
+        string passwordHash "argon2id"
+        string role "enum: customer, admin"
         date createdAt
-        date updatedAt
     }
 
-    BLOG {
+    ORDER {
         ObjectId _id PK
-        string title "min 3 chars"
-        string description "min 10 chars"
-        string category
-        string image "uploads path"
-        ObjectId author FK
-        string authorName "denormalized"
-        boolean isPublished
-        date createdAt
-        date updatedAt
+        ObjectId ownerId FK
+        string status "enum: placed, paid, cancelled"
+        number total
+        date placedAt
     }
 
-    COMMENT {
+    ORDER_LINE {
         ObjectId _id PK
-        ObjectId blog FK
-        string name "commenter name"
-        string content "min 5 chars"
-        boolean isApproved "moderation"
-        date createdAt
-        date updatedAt
+        ObjectId orderId FK
+        string sku
+        number quantity
+        number price
     }
 
-    USER ||--o{ BLOG : "writes"
-    BLOG ||--o{ COMMENT : "has"
+    USER ||--o{ ORDER : "places"
+    ORDER ||--|{ ORDER_LINE : "contains"
 ```
 
 ---
 
-## 5. State Diagram — Blog Post Lifecycle
+## 5. State Diagram — Order Lifecycle
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Draft: Author creates post
-    Draft --> Published: Author publishes
-    Published --> Draft: Author unpublishes
-    Published --> Published: Author edits
-    Draft --> Deleted: Author deletes
-    Published --> Deleted: Admin deletes
-    Deleted --> [*]
-
-    state Published {
-        [*] --> Active
-        Active --> HasComments: Comment added
-        HasComments --> Moderated: Admin approves
-    }
+    [*] --> Placed: Customer places order
+    Placed --> Paid: Payment confirmed
+    Placed --> Cancelled: Customer cancels within 30 min
+    Paid --> Shipped: Warehouse ships
+    Paid --> Refunded: Admin refunds
+    Shipped --> [*]
+    Cancelled --> [*]
+    Refunded --> [*]
 ```
 
 ---
 
-## 6. Flowchart — File Upload Security Pipeline
+## 6. Flowchart — File Upload Pipeline
 
 ```mermaid
 flowchart LR
-    A[Client sends file] --> B{MIME type check}
-    B -->|Invalid| C[Reject: 400]
-    B -->|Valid| D{Size check}
-    D -->|> 5MB| E[Reject: 400]
-    D -->|≤ 5MB| F[Generate server filename]
-    F --> G[blog-timestamp-random.ext]
-    G --> H[Save to uploads/blogs/]
-    H --> I[Store path in MongoDB]
-    I --> J[Return success]
+    A[Client sends file] --> B{FileInterceptor limits}
+    B -->|Too large| C[Reject: 413]
+    B -->|OK| D{ParseFilePipe: MIME and magic bytes}
+    D -->|Invalid| E[Reject: 400]
+    D -->|Valid| F[Generate server filename]
+    F --> G[Store outside the source tree]
+    G --> H[Save path on the document]
+    H --> I[Return 201]
 
     style C fill:#ff6b6b,color:#fff
     style E fill:#ff6b6b,color:#fff
-    style J fill:#51cf66,color:#fff
+    style I fill:#51cf66,color:#fff
 ```
 
 ---
 
-## 7. Flowchart — Error Handling Architecture
+## 7. Flowchart — Error Handling in NestJS
 
 ```mermaid
 flowchart TD
-    A[Express Request] --> B[Route Handler]
-    B --> C{Wrapped in asyncHandler?}
-    C -->|Yes| D[Execute controller]
-    C -->|No| E[Unhandled rejection risk!]
-    D --> F{Success?}
-    F -->|Yes| G[Send response]
-    F -->|No| H[Error thrown]
-    H --> I[asyncHandler catches]
-    I --> J[Forwards to global error handler]
-    J --> K{NODE_ENV?}
-    K -->|development| L[Return error + stack trace]
-    K -->|production| M[Return generic message]
-    J --> N[Log full error internally]
-
-    style E fill:#ff6b6b,color:#fff
+    A[Request] --> B[Controller → service]
+    B --> C{Outcome}
+    C -->|Success| D[Return response shape]
+    C -->|HttpException| E[Nest maps status and message]
+    C -->|Domain error| F[DomainErrorFilter maps to 4xx]
+    C -->|Unknown error| G[Default filter: generic 500]
+    F --> H[Log code and context]
+    G --> I[Log full error internally]
 ```
 
 ---
 
-## 8. Class Diagram — Mongoose Models
+## 8. Class Diagram — Frontend MVP Roles
 
 ```mermaid
 classDiagram
-    class User {
-        +ObjectId _id
-        +String email
-        -String password
-        +String name
-        +String role
-        +Boolean isActive
-        +Date createdAt
-        +comparePassword(candidate) Boolean
-        +toJSON() Object
+    class OrderListView {
+        +controller OrderListController
     }
 
-    class Blog {
-        +ObjectId _id
-        +String title
-        +String description
-        +String category
-        +String image
-        +ObjectId author
-        +String authorName
-        +Boolean isPublished
-        +Date createdAt
+    class OrderListController {
+        +orders Signal~Order[]~
+        +privateCount Signal~number~
+        +load() Promise~void~
+        +add(draft) Promise~void~
     }
 
-    class Comment {
-        +ObjectId _id
-        +ObjectId blog
-        +String name
-        +String content
-        +Boolean isApproved
-        +Date createdAt
+    class OrdersRepository {
+        +list(scope) Promise~Order[]~
+        +create(draft) Promise~void~
     }
 
-    User "1" --> "*" Blog : writes
-    Blog "1" --> "*" Comment : has
+    class OrdersApi {
+        +get(path) Promise~OrderDto[]~
+        +post(path, body) Promise~StatusDto~
+    }
+
+    OrderListView --> OrderListController : binds signals, forwards events
+    OrderListController --> OrdersRepository : uses
+    OrdersRepository --> OrdersApi : maps DTOs
 ```
 
 ---
@@ -245,11 +213,11 @@ classDiagram
 flowchart TD
     A[Browser sends request] --> B{Origin header present?}
     B -->|No| C[Allow: server-to-server]
-    B -->|Yes| D{Origin in allowlist?}
+    B -->|Yes| D{Origin in enableCors allowlist?}
     D -->|Yes| E[Set Access-Control-Allow-Origin]
-    D -->|No| F[CORS Error: blocked]
+    D -->|No| F[CORS error: blocked]
     E --> G{Preflight OPTIONS?}
-    G -->|Yes| H[Return allowed methods/headers]
+    G -->|Yes| H[Return allowed methods and headers]
     G -->|No| I[Process request normally]
 
     style F fill:#ff6b6b,color:#fff
@@ -262,25 +230,22 @@ flowchart TD
 ```mermaid
 gantt
     dateFormat YYYY-MM-DD
-    title Blog Feature Implementation
+    title Order Cancellation
 
-    section Backend
-        Database schema        :done, db, 2024-01-01, 2d
-        Auth middleware         :done, auth, after db, 2d
-        CRUD controllers       :active, crud, after auth, 3d
-        Input validation       :val, after crud, 1d
-        File upload            :upload, after val, 2d
+    section API
+        DTOs and contract        :done, dto, 2026-01-05, 1d
+        Cancel rule (pure)       :done, rule, after dto, 1d
+        Service and controller   :active, api, after rule, 2d
+        Unit and e2e tests       :apitest, after api, 2d
 
-    section Frontend
-        Login page             :login, after auth, 2d
-        Blog list component    :list, after crud, 2d
-        Blog form component    :form, after list, 3d
-        Comment section        :comment, after form, 2d
+    section Angular
+        API service and model    :web1, after dto, 1d
+        Controller with signals  :web2, after web1, 2d
+        View and dialog          :web3, after web2, 2d
+        Controller tests         :webtest, after web2, 2d
 
-    section Testing
-        Backend tests          :btest, after upload, 3d
-        Frontend tests         :ftest, after comment, 3d
-        Security review        :sec, after btest, 2d
+    section Review
+        Architecture and security review :rev, after apitest, 1d
 ```
 
 ---
@@ -289,29 +254,26 @@ gantt
 
 ```mermaid
 mindmap
-  root((Quick Blog))
+  root((Orders app))
     Client
-      React 19
-      Vite 6
-      Tailwind CSS 4
-      React Router 7
-      Axios
+      Angular
+      Signals
+      HttpClient
+      Router with lazy routes
+      Vitest unit tests
     Server
-      Express 5
-      Mongoose 8
-      JWT Auth
-      Multer uploads
-      Rate limiting
+      NestJS
+      Mongoose
+      ValidationPipe and DTOs
+      Guards
+      ConfigModule
     Database
       MongoDB
       Docker Compose
-      migrate-mongo
     Features
-      Blog CRUD
-      Comments
-      AI generation
-      File uploads
-      Admin panel
+      Order list
+      Order creation
+      Cancellation
 ```
 
 ---

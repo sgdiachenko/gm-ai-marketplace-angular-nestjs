@@ -7,10 +7,10 @@ Use it to settle a fact before you decide something: how a feature works today, 
 ## Install
 
 ```bash
-claude plugin install research-tools --marketplace sgdiachenko/gm-ai-marketplace
+claude plugin install research-tools --marketplace sgdiachenko/gm-ai-marketplace-angular-nestjs
 ```
 
-Or in a session: `/plugin install research-tools --marketplace sgdiachenko/gm-ai-marketplace`. Installing `sdd-engineering` installs this plugin too.
+Or in a session: `/plugin install research-tools --marketplace sgdiachenko/gm-ai-marketplace-angular-nestjs`. Installing `sdd-engineering` installs this plugin too.
 
 ## The `researcher` agent
 
@@ -27,8 +27,8 @@ Ask in plain words and name the agent, or let Claude delegate on its own:
 
 ```text
 Use research-tools:researcher: where do we validate webhook signatures, and since which commit?
-Use research-tools:researcher: does Fastify 5 still support reply.sent? Scope: external.
-Use research-tools:researcher: why does the orders module bypass the cache? Scope: repo, src/modules/orders.
+Use research-tools:researcher: does NestJS 12 still support ParseObjectIdPipe from @nestjs/mongoose? Scope: external.
+Use research-tools:researcher: why does the orders module bypass the cache? Scope: repo, server/src/orders.
 ```
 
 You can also @-mention it: `@agent-research-tools:researcher`.

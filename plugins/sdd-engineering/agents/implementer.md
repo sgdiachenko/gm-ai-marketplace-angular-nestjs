@@ -10,7 +10,7 @@ skills:
 
 You are **implementer**. You execute an Implementation Plan written by `sdd-engineering:implementation-planner` — exactly that plan (or the one work package you are given), no more. You verify your own changes with the project's checks. Architecture and security review are done by separate agents after you.
 
-Only `engineering-paved-path:engineering-insights` is preloaded. Practice skills load **on demand** through the Skill tool: for each step, load every skill the step's `skills:` field names (`Skill: engineering-paved-path:react-best-practices`), once per skill per run, not per step. The plan's `C#` Constraints already carry the binding rules; a skill is for detail the constraint doesn't spell out. When a skill points to a reference file of its own, read it only if the step needs it.
+Only `engineering-paved-path:engineering-insights` is preloaded. Practice skills load **on demand** through the Skill tool: for each step, load every skill the step's `skills:` field names (`Skill: engineering-paved-path:angular-developer`), once per skill per run, not per step. The plan's `C#` Constraints already carry the binding rules; a skill is for detail the constraint doesn't spell out. When a skill points to a reference file of its own, read it only if the step needs it.
 
 ## Project profile
 
@@ -79,7 +79,7 @@ Every skill you loaded, by namespaced name, then the rule each one shaped. A ski
 ## Checks
 | Command | Exit | Result |
 |---|---|---|
-| `npm test -- src/orders` | 0 | pass |
+| `npm --prefix client test -- --watch=false` | 0 | pass |
 <for each fail: the last ~20 relevant output lines>
 
 ## Deviations from plan

@@ -1,6 +1,6 @@
-# gm-ai-marketplace — AGENTS.md
+# gm-ai-marketplace-angular-nestjs — AGENTS.md
 
-Claude Code plugin marketplace for the team, in a public repo. One repo = one marketplace named `gm-ai-marketplace`; each plugin lives in `plugins/<name>/`.
+Claude Code plugin marketplace for the team's Angular + NestJS projects, in a private repo. One repo = one marketplace named `gm-ai-marketplace-angular-nestjs`; each plugin lives in `plugins/<name>/`. It is an independent copy of `sgdiachenko/gm-ai-marketplace` (forked from its `main` at `be94e42`): the plugin names and the SDD workflow are the same, the stack skills are Angular and NestJS.
 
 ## Stack
 - Claude Code plugin marketplace format; CI pins Claude Code 2.1.296 (`.github/workflows/validate.yml`)
@@ -24,7 +24,7 @@ Claude Code plugin marketplace for the team, in a public repo. One repo = one ma
 - `.claude-plugin/marketplace.json` — the catalog, one entry per plugin
 - `plugins/<name>/` — a plugin; everything in it ships to users
 - `scripts/` — validation used locally and in CI
-- `site/` — the catalog site on GitHub Pages, built from the repository; deployed by `.github/workflows/site.yml`
+- `site/` — the catalog site, built from the repository; `.github/workflows/site.yml` tests it on every push and deploys it to GitHub Pages only when the repository variable `PAGES_ENABLED` is `true`
 - `docs/` — maintainer and user docs; per-plugin notes in `docs/plugins/<name>.md`
 - `evals/` — `claude plugin eval` suites; maintainer-only, never inside a plugin
 - `specs/` — specs for planned plugins and changes
@@ -37,6 +37,8 @@ Claude Code plugin marketplace for the team, in a public repo. One repo = one ma
 - Prefer skills over commands; keep SKILL.md tool-neutral for a future Codex port
 - Hooks and MCP configs reference bundled files as `"${CLAUDE_PLUGIN_ROOT}"/...`; persistent state goes to `${CLAUDE_PLUGIN_DATA}`
 - Maintainer-only files (AGENTS.md, INSIGHTS.md, docs, specs, tests) never go inside `plugins/<name>/`; per-plugin notes go to `docs/plugins/<name>.md`
+- This copy targets Angular and NestJS only: no React, Next.js or Fastify skills, and no mechanism for choosing between stacks. `scripts/check-marketplace.mjs` rejects the retired skill names (`react-best-practices`, `next-best-practices`, `fastify-best-practices`, `react-testing-library`, `onion-architecture`) and source-project names in plugins
+- `engineering-paved-path/skills/angular-developer` is the Angular team's skill, vendored unchanged from `angular/skills`; update it only by copying a newer upstream commit (`docs/plugins/engineering-paved-path.md`), never by editing it
 - Everything in the repository is in English: docs, catalog metadata, plugin files (code, examples and comments included), scripts, evals and the catalog site. `scripts/check-marketplace.mjs` rejects Cyrillic anywhere in `plugins/`, `scripts/`, `evals/` and `.github/`, and outside code spans in the root docs, `docs/`, `specs/` and `site/`. The one exception is data a feature needs: the Ukrainian search words in `site/search-terms.json` and the tests that query with them
 
 ## Gotchas
@@ -48,7 +50,8 @@ Claude Code plugin marketplace for the team, in a public repo. One repo = one ma
 - Plugin names starting with `claude-` or `anthropic-` fail validation
 - A newer Claude Code can add validation rules that fail `--strict`; bump the CI pin in its own PR
 
-- The `stable` branch is the stable channel: `main` at a promoted commit plus a catalog renamed to `gm-ai-marketplace-stable`. Promote by merging `main` into it in a PR; never merge `stable` into `main`
+- There is no `stable` branch yet. When one is created, it is the stable channel: `main` at a promoted commit plus a catalog renamed to `gm-ai-marketplace-angular-nestjs-stable`. Promote by merging `main` into it in a PR; never merge `stable` into `main`
+- Never push to `sgdiachenko/gm-ai-marketplace` from here, and don't copy its `<plugin>--v<version>` tags: this repository's tags are created by its own `tag-releases.yml`
 
 ## Do not touch
 - `renames` in `.claude-plugin/marketplace.json` — append-only history that migrates installed users

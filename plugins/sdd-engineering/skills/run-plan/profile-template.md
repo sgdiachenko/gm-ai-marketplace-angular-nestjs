@@ -28,12 +28,16 @@ noted in it; a missing check command is never guessed — the agents ask instead
 
 | Module | Path | Package manager | Full checks (what CI runs) | Targeted tests |
 |---|---|---|---|---|
-| api | apps/api/ | pnpm | `pnpm -C apps/api lint` · `pnpm -C apps/api typecheck` · `pnpm -C apps/api test` | `pnpm -C apps/api exec vitest run <files>` |
-| web | apps/web/ | pnpm | `pnpm -C apps/web lint` · `pnpm -C apps/web typecheck` · `pnpm -C apps/web test` | `pnpm -C apps/web exec vitest run <files>` |
+| api | apps/api/ | npm | `npm --prefix apps/api run lint` · `npm --prefix apps/api run build` · `npm --prefix apps/api test` | `npm --prefix apps/api exec vitest run <files>` |
+| web | apps/web/ | npm | `npm --prefix apps/web run lint` · `npm --prefix apps/web run build` · `npm --prefix apps/web test -- --watch=false` | `npm --prefix apps/web test -- --watch=false --include <globs relative to src/>` |
+
+<!-- Only commands that exist in the module's package.json (or its CI config). A module with no test or lint script
+gets "none yet" in that cell: agents never invent a script, and the planner asks how tests will be added
+(adding a test runner is an install, which is the user's decision). -->
 
 Tests that need infrastructure (not run by implementers unless it is up):
 
-- `apps/api/**/*.it.test.ts` — needs Docker (`docker info`)
+- `apps/api/test/**/*.e2e-spec.ts` — needs a database (`docker compose ps`)
 
 ## Skill lanes
 
@@ -41,26 +45,27 @@ Which skills govern which files. Implementers load these for every file they tou
 
 | Files | Skills |
 |---|---|
-| `apps/web/src/app/**/{page,layout,route,loading,error,not-found}.tsx` | `engineering-paved-path:next-best-practices`, `engineering-paved-path:frontend-architecture` |
-| `apps/web/src/**/*.tsx` | `engineering-paved-path:react-best-practices`, `engineering-paved-path:frontend-architecture` |
-| `apps/web/**/*.test.tsx` | `engineering-paved-path:react-testing-library` |
-| `apps/api/src/modules/*/routes.ts` | `engineering-paved-path:fastify-best-practices`, `engineering-paved-path:onion-architecture`, `engineering-paved-path:security` |
-| `apps/api/src/**` | `engineering-paved-path:onion-architecture` |
+| `apps/web/src/app/**/*.{ts,html}` | `engineering-paved-path:angular-developer`, `engineering-paved-path:frontend-architecture` |
+| `apps/web/src/app/**/*.spec.ts` | `engineering-paved-path:angular-developer` |
+| `apps/web/src/app/**/*{guard,interceptor}*.ts` | `engineering-paved-path:angular-developer`, `engineering-paved-path:security` |
+| `apps/api/src/**/*.controller.ts`, `apps/api/src/**/dto/**` | `engineering-paved-path:nestjs-best-practices`, `engineering-paved-path:nestjs-backend-architecture`, `engineering-paved-path:security` |
+| `apps/api/src/**` | `engineering-paved-path:nestjs-best-practices`, `engineering-paved-path:nestjs-backend-architecture` |
+| `apps/api/**/*.spec.ts`, `apps/api/test/**` | `engineering-paved-path:nestjs-best-practices` |
 
 ## Architecture rules
 
-- Sources: docs/architecture.md, apps/api/.dependency-cruiser.cjs, apps/web/eslint.config.mjs
-- Checks: `pnpm -C apps/api arch:check` · `pnpm -C apps/web lint`
-- Baseline of known violations: apps/api/.dependency-cruiser-known-violations.json
+- Sources: docs/architecture.md, apps/api/eslint.config.mjs, apps/web/eslint.config.js
+- Checks: `npm --prefix apps/api run lint` · `npm --prefix apps/web run lint`
+- Baseline of known violations: none
 
 ## Guardrails
 
 Built in for every agent: no commits, pushes or PRs; no installs; no migrations or seeds; no destructive container commands. Add your own:
 
-- Forbidden commands: `pnpm db:reset`
+- Forbidden commands: `npm --prefix apps/api run seed`, `docker compose down -v`
 - Do-not-touch paths: `apps/api/src/generated/`, `infra/`
 
 ## Live checks
 
 - Manual verification may call paid or credentialed services: no
-- Run the app for manual checks: `pnpm dev` (web on http://localhost:3000)
+- Run the app for manual checks: `npm --prefix apps/api run start:dev` (API on http://localhost:3000), `npm --prefix apps/web start` (web on http://localhost:4200)

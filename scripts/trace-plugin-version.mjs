@@ -7,7 +7,7 @@
 // also carry the user's email and account ids.
 // Usage: node scripts/trace-plugin-version.mjs [project-dir] [--marketplace <prefix>] [--all]
 //   project-dir: where to start the session, so project-scope plugins load (default: current dir)
-//   --marketplace: marketplace name prefix to keep (default: gm-ai-marketplace, so -stable matches too)
+//   --marketplace: marketplace name prefix to keep (default: gm-ai-marketplace-angular-nestjs, so -stable matches too)
 //   --all: print every loaded plugin
 // The session sends one short prompt to Haiku, so it costs a fraction of a cent.
 import { spawnSync } from 'node:child_process';
@@ -15,7 +15,7 @@ import { resolve } from 'node:path';
 
 const args = process.argv.slice(2);
 let cwd = process.cwd();
-let prefix = 'gm-ai-marketplace';
+let prefix = 'gm-ai-marketplace-angular-nestjs';
 let all = false;
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--all') all = true;

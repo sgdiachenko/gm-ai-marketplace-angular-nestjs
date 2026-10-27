@@ -1,11 +1,11 @@
 {
   "name": "engineering-paved-path",
   "displayName": "Engineering paved path",
-  "version": "1.0.0",
-  "description": "Shared engineering skills: React, Next.js, Fastify, frontend and backend architecture, testing, security and project insights",
+  "version": "2.0.0",
+  "description": "Shared engineering skills for Angular and NestJS: the official angular-developer skill, NestJS practices, frontend and backend architecture, security and project insights",
   "author": {
     "name": "Serhii Diachenko"
   },
-  "repository": "https://github.com/sgdiachenko/gm-ai-marketplace",
-  "keywords": ["react", "nextjs", "fastify", "architecture", "testing", "security"]
+  "repository": "https://github.com/sgdiachenko/gm-ai-marketplace-angular-nestjs",
+  "keywords": ["angular", "nestjs", "architecture", "testing", "security"]
 }

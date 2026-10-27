@@ -2,6 +2,14 @@
 
 All notable changes to `research-tools`. Versions follow [semver](https://semver.org): a new agent is a minor release, a change to an agent's name or report format that callers parse is a major one.
 
+## 1.0.1 — 2026-10-27
+
+First release in `gm-ai-marketplace-angular-nestjs`, the Angular + NestJS copy of `gm-ai-marketplace`. The agent is unchanged.
+
+### Changed
+
+- `repository` points to `sgdiachenko/gm-ai-marketplace-angular-nestjs`; README examples use NestJS.
+
 ## 1.0.0 — 2026-10-14
 
 ### Added

@@ -4,7 +4,9 @@ What one short SDD workflow costs, one change that removes a source of excess co
 
 ## Scenario
 
-`evals/cost-workflow/spec-and-plan`: a seeded Next.js project with its own `AGENTS.md`, check commands and `docs/sdd-profile.md`. The user asks for a spec and a plan for a small feature: add a word with its translation on the words page, kept only while the page is open. The orchestrating session isn't allowed to ask anything; it answers questions with the smallest scope, rejects UX proposals and revises at most once:
+> **In this copy:** the numbers below were measured in `gm-ai-marketplace` (sdd-engineering 1.0.0–1.1.0) with the Next.js fixture. The fixture here is now an equivalent Angular app with the same feature request, so the old numbers are a reference, not a baseline: run the scenario on 2.0.0 once and record a new baseline before applying the quality gate to a prompt or model change.
+
+`evals/cost-workflow/spec-and-plan`: a seeded project (originally Next.js, now Angular) with its own `AGENTS.md`, check commands and `docs/sdd-profile.md`. The user asks for a spec and a plan for a small feature: add a word with its translation on the words page, kept only while the page is open. The orchestrating session isn't allowed to ask anything; it answers questions with the smallest scope, rejects UX proposals and revises at most once:
 
 1. `sdd-engineering:spec-creator` analyze → write → approve (one revise if approval is refused);
 2. `research-tools:researcher` for each research request, if any;

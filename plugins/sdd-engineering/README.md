@@ -1,6 +1,6 @@
 # sdd-engineering
 
-Spec-Driven Development (SDD) for Claude Code. A feature goes from a request to a merged change through written, checkable artifacts:
+Spec-Driven Development (SDD) for Claude Code, set up for **Angular** frontends and **NestJS** APIs. A feature goes from a request to a merged change through written, checkable artifacts:
 
 1. A **spec** says what the system must do and how to check it: EARS acceptance criteria, edge cases, non-functional requirements.
 2. A **plan** says how to build it: steps, files, skills, tests, and work packages that parallel implementers can own.
@@ -13,16 +13,16 @@ Every hand-off is a file, so a run survives a fresh chat, and every claim of "do
 ## Install
 
 ```bash
-claude plugin install sdd-engineering --marketplace sgdiachenko/gm-ai-marketplace
+claude plugin install sdd-engineering --marketplace sgdiachenko/gm-ai-marketplace-angular-nestjs
 ```
 
-Or in a session: `/plugin install sdd-engineering --marketplace sgdiachenko/gm-ai-marketplace`. Claude Code installs the three plugins it depends on:
+Or in a session: `/plugin install sdd-engineering --marketplace sgdiachenko/gm-ai-marketplace-angular-nestjs`. The repository is private: see the marketplace's `docs/installing.md` for git access. Claude Code installs the three plugins it depends on:
 
 | Dependency | Gives the workflow |
 |---|---|
-| `engineering-paved-path` `^1.0.0` | the practice skills agents apply: React, Next.js, Fastify, frontend and backend architecture, React testing, security, `INSIGHTS.md` |
+| `engineering-paved-path` `^2.0.0` | the practice skills agents apply: the official `angular-developer`, NestJS practices, Angular and NestJS architecture, security, `INSIGHTS.md` |
 | `research-tools` `^1.0.0` | `researcher`, which answers the spec writer's research requests with evidence |
-| `architecture-review` `^1.0.0` | `architecture-reviewer`, the layering review in `/run-plan` |
+| `architecture-review` `^2.0.0` | `architecture-reviewer`, the layering review in `/run-plan` |
 
 ## The flow
 
@@ -96,8 +96,11 @@ An example row from the template:
 ```markdown
 | Module | Path | Package manager | Full checks (what CI runs) | Targeted tests |
 |---|---|---|---|---|
-| api | apps/api/ | pnpm | `pnpm -C apps/api lint` · `pnpm -C apps/api typecheck` · `pnpm -C apps/api test` | `pnpm -C apps/api exec vitest run <files>` |
+| api | apps/api/ | npm | `npm --prefix apps/api run lint` · `npm --prefix apps/api run build` · `npm --prefix apps/api test` | `npm --prefix apps/api exec vitest run <files>` |
 ```
+
+Only commands that exist in the module's `package.json` belong in the profile. A module without a test script gets `none yet`; the planner then asks how tests will be added instead of inventing a command. A filled-in example for an Angular `client/` + NestJS `server/` starter: [`docs/examples/sdd-profile-angular-nestjs-starter.md`](https://github.com/sgdiachenko/gm-ai-marketplace-angular-nestjs/blob/main/docs/examples/sdd-profile-angular-nestjs-starter.md) in the marketplace repository.
+
 
 ## Step by step
 

@@ -1,16 +1,16 @@
 # architecture-review
 
-A read-only `architecture-reviewer` agent that checks a diff for layering problems before a human reviewer has to: imports that point outward, services that take the whole DI container, SQL in route handlers, adapters reaching into modules, frontend features importing each other's internals.
+A read-only `architecture-reviewer` agent that checks a diff for layering problems before a human reviewer has to: NestJS controllers or DTOs importing the ORM, business rules in controllers, a module registering another module's schema, Angular components calling `HttpClient`, features importing each other's internals, `shared/` importing a feature.
 
-It reviews against **your** rules first — the project profile, `AGENTS.md`, architecture docs, and the linters you already configured (dependency-cruiser, ESLint boundary rules). Where you have none, it falls back to the `onion-architecture` and `frontend-architecture` skills from `engineering-paved-path`.
+It reviews against **your** rules first — the project profile, `AGENTS.md`, architecture docs, and the linters you already configured (dependency-cruiser, ESLint boundary rules). Where you have none, it falls back to the `nestjs-backend-architecture` and `frontend-architecture` skills from `engineering-paved-path`.
 
 ## Install
 
 ```bash
-claude plugin install architecture-review --marketplace sgdiachenko/gm-ai-marketplace
+claude plugin install architecture-review --marketplace sgdiachenko/gm-ai-marketplace-angular-nestjs
 ```
 
-This also installs `engineering-paved-path`, which the agent depends on. `sdd-engineering` installs both.
+This also installs `engineering-paved-path`, which the agent depends on. `sdd-engineering` installs both. The repository is private: see the marketplace's `docs/installing.md` for git access.
 
 ## The `architecture-reviewer` agent
 
@@ -19,7 +19,7 @@ This also installs `engineering-paved-path`, which the agent depends on. `sdd-en
 | Name | `architecture-review:architecture-reviewer` |
 | Model | Sonnet |
 | Tools | Read, Grep, Glob, read-only Bash, Skill |
-| Preloaded skills | `engineering-paved-path:onion-architecture`, `engineering-paved-path:frontend-architecture`, `engineering-paved-path:engineering-insights` |
+| Preloaded skills | `engineering-paved-path:nestjs-backend-architecture`, `engineering-paved-path:frontend-architecture`, `engineering-paved-path:engineering-insights` |
 | Writes | nothing |
 
 ### How to use it
@@ -27,7 +27,7 @@ This also installs `engineering-paved-path`, which the agent depends on. `sdd-en
 ```text
 Use architecture-review:architecture-reviewer on all open changes.
 Use architecture-review:architecture-reviewer on origin/main..HEAD.
-Use architecture-review:architecture-reviewer: re-check F1 and F3 after my fix in src/modules/orders/service.ts.
+Use architecture-review:architecture-reviewer: re-check F1 and F3 after my fix in src/orders/orders.service.ts.
 ```
 
 Or @-mention it: `@agent-architecture-review:architecture-reviewer`.
@@ -38,7 +38,7 @@ With no scope, it reviews everything not yet on the default branch: committed, s
 
 1. Reads your rule sources: `docs/sdd-profile.md` (*Architecture rules*), `AGENTS.md` / `CLAUDE.md`, architecture docs, linter configs.
 2. Runs your architecture checks first, such as `npm run arch:check` or a dependency-cruiser script, and records exit codes. It never installs anything and never runs `--fix`.
-3. Reviews the changed lines only, using the onion and frontend checklists mapped onto your folders.
+3. Reviews the changed lines only, using the NestJS and Angular architecture checklists mapped onto your folders.
 4. Returns findings and a verdict.
 
 ### Output
@@ -63,8 +63,8 @@ After a fix round, pass the earlier findings and the files you changed:
 
 ```text
 Use architecture-review:architecture-reviewer.
-Re-check: F1 src/modules/orders/routes.ts:42, F3 src/adapters/payments/stripe.ts:10
-Fix files: src/modules/orders/routes.ts, src/modules/orders/service.ts
+Re-check: F1 server/src/orders/orders.controller.ts:42, F3 client/src/app/features/orders/order-list.ts:10
+Fix files: server/src/orders/orders.controller.ts, server/src/orders/orders.service.ts
 ```
 
 It marks each finding `fixed`, `still-open` or `moved`, and reviews only the changed lines of the fix files for new problems. `/sdd-engineering:run-plan` uses this mode in its review-fix loop.
@@ -75,9 +75,9 @@ The agent works best when it knows where your rules and checks are. If you use `
 
 ```markdown
 ## Architecture rules
-- Sources: docs/architecture.md, .dependency-cruiser.cjs, apps/web/eslint.config.mjs
-- Checks: npm run arch:check · npm --prefix apps/web run lint
-- Baseline: .dependency-cruiser-known-violations.json
+- Sources: docs/architecture.md, server/eslint.config.mjs, client/eslint.config.js
+- Checks: npm --prefix server run lint · npm --prefix client run lint
+- Baseline: none
 ```
 
 Without a profile it reads `AGENTS.md` and finds linter configs and `arch`/`lint` scripts on its own.

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Seeds the workspace with a small Next.js app that has its own instructions, check commands
+# Seeds the workspace with a small Angular app that has its own instructions, check commands
 # and an SDD profile, but none of this marketplace's components. Runs only with --scaffold.
 set -euo pipefail
 
-mkdir -p app/words docs/specs docs/plans
+mkdir -p src/app/features/words docs/specs docs/plans
 
 cat > package.json <<'EOF'
 {
@@ -11,64 +11,81 @@ cat > package.json <<'EOF'
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "lint": "eslint",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "start": "ng serve",
+    "build": "ng build",
+    "test": "ng test"
   },
-  "dependencies": { "next": "16.2.6", "react": "19.2.4", "react-dom": "19.2.4" },
-  "devDependencies": { "typescript": "^5", "vitest": "^3", "@testing-library/react": "^16", "eslint": "^9" }
+  "dependencies": {
+    "@angular/common": "^22.2.0",
+    "@angular/compiler": "^22.2.0",
+    "@angular/core": "^22.2.0",
+    "@angular/forms": "^22.2.0",
+    "@angular/platform-browser": "^22.2.0",
+    "@angular/router": "^22.2.0",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^22.2.4",
+    "@angular/cli": "^22.2.4",
+    "@angular/compiler-cli": "^22.2.0",
+    "jsdom": "^30.0.0",
+    "typescript": "~6.0.2",
+    "vitest": "^5.0.0"
+  }
 }
 EOF
 
 cat > AGENTS.md <<'EOF'
 # vocabulary
 
-A small Next.js App Router app for learning words. There is no backend: data lives in the browser.
+A small Angular app for learning words. There is no backend: data lives in the browser.
 
 ## Commands
-- lint: `npm run lint`
-- typecheck: `npm run typecheck`
-- tests: `npm test` (Vitest + React Testing Library)
+- build (also type-checks): `npm run build`
+- tests: `npm test -- --watch=false` (Vitest through `ng test`)
 
 ## Layout
-- `app/` — routes; `app/words/` is the words page
-- feature code that is not a route goes to `app/<feature>/_components/` and `app/<feature>/_lib/`
+- `src/app/app.routes.ts` — routes; `/words` lazy-loads the words page
+- feature code goes to `src/app/features/<feature>/`; code shared by two features goes to `src/app/shared/`
+- state lives in signals inside services; components only render and forward events
 EOF
 
-cat > app/layout.tsx <<'EOF'
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <body>{children}</body>
-    </html>
-  );
-}
+cat > src/app/app.ts <<'EOF'
+import { Component } from '@angular/core';
+import { RouterLink, RouterOutlet } from '@angular/router';
+
+@Component({
+  selector: 'app-root',
+  imports: [RouterLink, RouterOutlet],
+  template: `
+    <h1>Vocabulary</h1>
+    <a routerLink="/words">Words</a>
+    <router-outlet />
+  `,
+})
+export class App {}
 EOF
 
-cat > app/page.tsx <<'EOF'
-import Link from "next/link";
+cat > src/app/app.routes.ts <<'EOF'
+import { Routes } from '@angular/router';
 
-export default function Home() {
-  return (
-    <main>
-      <h1>Vocabulary</h1>
-      <Link href="/words">Words</Link>
-    </main>
-  );
-}
+export const routes: Routes = [
+  { path: 'words', loadComponent: () => import('./features/words/words-page').then((m) => m.WordsPage) },
+];
 EOF
 
-cat > app/words/page.tsx <<'EOF'
-export default function WordsPage() {
-  return (
-    <main>
-      <h1>Words</h1>
-      <p>Coming soon.</p>
-    </main>
-  );
-}
+cat > src/app/features/words/words-page.ts <<'EOF'
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-words-page',
+  template: `
+    <h2>Words</h2>
+    <p>Coming soon.</p>
+  `,
+})
+export class WordsPage {}
 EOF
 
 cat > docs/specs/README.md <<'EOF'
@@ -99,20 +116,19 @@ cat > docs/sdd-profile.md <<'EOF'
 
 | Module | Path | Package manager | Full checks (what CI runs) | Targeted tests |
 |---|---|---|---|---|
-| web | ./ | npm | `npm run lint` · `npm run typecheck` · `npm test` | `npx vitest run <files>` |
+| web | ./ | npm | `npm run build` · `npm test -- --watch=false` | `npm test -- --watch=false --include <globs relative to src/>` |
 
 ## Skill lanes
 
 | Files | Skills |
 |---|---|
-| `app/**/{page,layout}.tsx` | `engineering-paved-path:next-best-practices`, `engineering-paved-path:frontend-architecture` |
-| `app/**/*.tsx` | `engineering-paved-path:react-best-practices` |
-| `app/**/*.test.tsx` | `engineering-paved-path:react-testing-library` |
+| `src/app/**/*.{ts,html}` | `engineering-paved-path:angular-developer`, `engineering-paved-path:frontend-architecture` |
+| `src/app/**/*.spec.ts` | `engineering-paved-path:angular-developer` |
 
 ## Architecture rules
 
 - Sources: AGENTS.md
-- Checks: `npm run lint`
+- Checks: none
 
 ## Guardrails
 
@@ -122,7 +138,7 @@ cat > docs/sdd-profile.md <<'EOF'
 ## Live checks
 
 - Manual verification may call paid or credentialed services: no
-- Run the app for manual checks: `npm run dev` (http://localhost:3000)
+- Run the app for manual checks: `npm start` (http://localhost:4200)
 EOF
 
 git init -q

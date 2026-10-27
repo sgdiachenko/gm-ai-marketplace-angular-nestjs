@@ -1,14 +1,14 @@
 {
   "name": "architecture-review",
   "displayName": "Architecture review",
-  "version": "1.0.0",
-  "description": "Read-only architecture-reviewer agent: checks a diff for dependency direction, layering and module boundaries",
+  "version": "2.0.0",
+  "description": "Read-only architecture-reviewer agent: checks a diff for dependency direction, NestJS layering and Angular module boundaries",
   "author": {
     "name": "Serhii Diachenko"
   },
-  "repository": "https://github.com/sgdiachenko/gm-ai-marketplace",
-  "keywords": ["architecture", "review", "layering", "onion", "boundaries"],
+  "repository": "https://github.com/sgdiachenko/gm-ai-marketplace-angular-nestjs",
+  "keywords": ["architecture", "review", "layering", "boundaries", "angular", "nestjs"],
   "dependencies": [
-    { "name": "engineering-paved-path", "version": "^1.0.0" }
+    { "name": "engineering-paved-path", "version": "^2.0.0" }
   ]
 }

@@ -13,9 +13,10 @@ Run through this before every commit that touches server code, auth logic, or us
 - [ ] User input is validated server-side (not just client-side)
 - [ ] Database queries use parameterized/typed inputs (no raw operator injection)
 - [ ] Error responses don't leak stack traces or internal paths
-- [ ] Auth middleware is applied to all protected endpoints
+- [ ] Every protected endpoint is covered by a guard (a global guard with explicit public routes)
 - [ ] File uploads have MIME type validation, size limits, and safe naming
-- [ ] No `dangerouslySetInnerHTML` without DOMPurify sanitization
+- [ ] No `bypassSecurityTrust*` call or direct `innerHTML` write on a user-controlled value
+- [ ] No secrets in Angular `environment*.ts` files or anywhere in the frontend bundle
 - [ ] No `eval()`, `Function()`, or `exec()` with user input
 - [ ] Sensitive data is redacted in log output
 
@@ -23,23 +24,23 @@ Run through this before every commit that touches server code, auth logic, or us
 
 ## New API Endpoint Checklist
 
-When adding a new Express route/controller.
+When adding a NestJS controller route.
 
 ### Authentication & Authorization
-- [ ] Endpoint is behind `auth` middleware (if not public)
-- [ ] Role check applied if endpoint is admin-only (`req.user.role === 'admin'`)
+- [ ] Endpoint is covered by the auth guard, or explicitly marked public
+- [ ] Role check applied if the endpoint is admin-only (a roles guard reading route metadata)
 - [ ] Resource ownership verified for update/delete operations (IDOR prevention)
-- [ ] Rate limiter applied (especially for login, comments, generation, uploads)
+- [ ] Throttling applied (especially for login, sign-up, expensive or paid operations, uploads)
 
 ### Input Validation
 - [ ] All expected fields validated (required, type, length, format)
-- [ ] Validation middleware runs BEFORE the controller
-- [ ] Input types explicitly cast (`String()`, `Number()`, `mongoose.Types.ObjectId()`)
-- [ ] Only expected fields extracted from `req.body` (no spread operator)
+- [ ] Input is a DTO class validated by the global `ValidationPipe` (`whitelist`, `forbidNonWhitelisted`)
+- [ ] Route params pass through a parsing pipe (`ParseIntPipe`, `ParseUUIDPipe`, an id pipe) before use
+- [ ] No raw `@Body()` object is spread into a create or update query
 - [ ] Query parameters validated and cast before use in MongoDB queries
 
 ### Error Handling
-- [ ] Controller wrapped in `asyncHandler` (or has try-catch)
+- [ ] Errors are thrown as Nest HTTP exceptions; none is caught and turned into a 200
 - [ ] Specific error codes returned (400, 401, 403, 404, 500)
 - [ ] Error messages are generic in production (no internal details)
 - [ ] Resource not found returns 404 (not 500)
@@ -47,9 +48,23 @@ When adding a new Express route/controller.
 
 ### Response Security
 - [ ] Response only includes fields the user should see
-- [ ] Password hash never included in response (`toJSON` method strips it)
+- [ ] Password hash never included in a response (response DTOs map only public fields)
 - [ ] Internal IDs not leaked if not needed by client
 - [ ] Timestamps and metadata appropriate for the user's role
+
+---
+
+## New Angular Feature Checklist
+
+When adding a page, form or HTTP call to the Angular app.
+
+- [ ] User content is rendered through interpolation or `[innerHTML]` binding, never through `bypassSecurityTrust*` without sanitizing first
+- [ ] No `nativeElement.innerHTML`, `document.write` or runtime template compilation with user data
+- [ ] Redirect targets from query params are limited to internal paths
+- [ ] Interceptors attach credentials only to the API's own origin
+- [ ] Route guards are treated as UX; the API enforces the same rule
+- [ ] Tokens are not stored in `localStorage` when an `HttpOnly` cookie is an option
+- [ ] No server response or token is logged with `console.log`
 
 ---
 
@@ -62,7 +77,7 @@ Before adding a package to `package.json`.
 - [ ] **Maintenance**: Last commit within 6 months, responsive to issues
 - [ ] **Popularity**: Reasonable download count (>10K weekly for production deps)
 - [ ] **Scope**: Package only accesses what it needs (no unnecessary network/fs/env access)
-- [ ] **Name**: Package name is correct (not a typosquat — `expres` vs `express`)
+- [ ] **Name**: Package name is correct (not a typosquat — `@nestjs/comon` vs `@nestjs/common`)
 - [ ] **License**: Compatible license (MIT, Apache 2.0, BSD — avoid GPL for proprietary code)
 - [ ] **Size**: Bundle size reasonable for what it does (check bundlephobia.com)
 - [ ] **Lock file**: `package-lock.json` updated and committed after install
@@ -89,7 +104,7 @@ When implementing or modifying file upload functionality.
 ### Cleanup
 - [ ] Uploaded file deleted when associated resource is deleted
 - [ ] File deletion validates path is within upload directory
-- [ ] Failed uploads are cleaned up (multer error handler)
+- [ ] Failed uploads are cleaned up (the `FileInterceptor` storage and its error path)
 - [ ] Old files replaced when resource is updated
 
 ### Serving
@@ -107,24 +122,23 @@ When modifying login, registration, or token handling.
 - [ ] User found by email with `isActive: true` check
 - [ ] Password compared with bcrypt (not in database query)
 - [ ] Generic error message for both "user not found" and "wrong password"
-- [ ] `loginLimiter` rate limiting applied
+- [ ] Login route throttled (`@Throttle` or the gateway)
 - [ ] JWT signed with env secret, explicit algorithm, and expiration
 - [ ] JWT payload contains only necessary claims (userId, email, name, role)
 - [ ] Password hash never included in response
 
-### Token Verification (auth middleware)
+### Token Verification (auth guard)
 - [ ] Token extracted from `Authorization: Bearer <token>` header
-- [ ] `jwt.verify()` used (NOT `jwt.decode()`)
+- [ ] `JwtService.verifyAsync()` used, with the algorithm pinned (never `decode()`)
 - [ ] Expired token returns 401 with "Token expired" message
 - [ ] Invalid token returns 401 with "Invalid token" message
-- [ ] Fail-closed: `next()` only called on successful verification
+- [ ] Fail-closed: the guard returns `true` only after successful verification; every error throws `UnauthorizedException`
 - [ ] Decoded user data set on `req.user`
 
 ### Password Storage
-- [ ] bcrypt with salt rounds >= 10
-- [ ] Password hashed in pre-save hook (only if modified)
-- [ ] `comparePassword` method on User model
-- [ ] `toJSON` strips password from all responses
+- [ ] Argon2id, or bcrypt with cost >= 10
+- [ ] Password hashed in the service before saving (Argon2id or bcrypt)
+- [ ] Response DTOs never include the hash
 - [ ] Password field has `minlength` validation
 
 ---
@@ -141,10 +155,10 @@ Before deploying to production.
 - [ ] `.env.example` doesn't contain real secrets
 
 ### HTTP Security
-- [ ] Helmet.js enabled with appropriate configuration
+- [ ] `helmet()` enabled on the Express adapter, or the same headers set by the proxy
 - [ ] CORS configured with explicit production origin (not wildcard)
 - [ ] HTTPS enforced (TLS termination at load balancer or reverse proxy)
-- [ ] Rate limiting active on all API routes
+- [ ] `ThrottlerGuard` (or the gateway) active on all API routes
 - [ ] Body parser size limit set (e.g., 10MB)
 - [ ] `trust proxy` set correctly if behind reverse proxy
 
@@ -156,10 +170,10 @@ Before deploying to production.
 - [ ] Connection timeout configured
 
 ### Error Handling
-- [ ] Global error handler active
+- [ ] Exception filters keep unknown errors generic (Nest's default 500)
 - [ ] Stack traces hidden in production responses
-- [ ] 404 handler for unmatched routes
-- [ ] Async error wrapper on all controllers
+- [ ] Unmatched routes return 404 (no catch-all route answering 200)
+- [ ] Configuration validated at startup; the app stops on a missing secret
 - [ ] Process exit on critical failures (DB connection loss)
 
 ### Logging & Monitoring

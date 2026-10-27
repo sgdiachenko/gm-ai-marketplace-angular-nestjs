@@ -1,16 +1,16 @@
 {
   "name": "sdd-engineering",
   "displayName": "SDD engineering",
-  "version": "1.1.0",
-  "description": "Spec-Driven Development workflow: spec, plan, parallel implementation, verification against the spec, architecture and code review, and a retro of the run",
+  "version": "2.0.0",
+  "description": "Spec-Driven Development workflow for Angular and NestJS: spec, plan, parallel implementation, verification against the spec, architecture and code review, and a retro of the run",
   "author": {
     "name": "Serhii Diachenko"
   },
-  "repository": "https://github.com/sgdiachenko/gm-ai-marketplace",
+  "repository": "https://github.com/sgdiachenko/gm-ai-marketplace-angular-nestjs",
   "keywords": ["sdd", "spec-driven-development", "agents", "planning", "verification", "ears"],
   "dependencies": [
-    { "name": "engineering-paved-path", "version": "^1.0.0" },
+    { "name": "engineering-paved-path", "version": "^2.0.0" },
     { "name": "research-tools", "version": "^1.0.0" },
-    { "name": "architecture-review", "version": "^1.0.0" }
+    { "name": "architecture-review", "version": "^2.0.0" }
   ]
 }

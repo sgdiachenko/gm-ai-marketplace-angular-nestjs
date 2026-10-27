@@ -6,6 +6,17 @@ All notable changes to `sdd-engineering`. Versions follow [semver](https://semve
 - **minor** — a new agent, skill, mode or profile field that existing projects can ignore;
 - **major** — a renamed or removed agent or skill, a changed artifact format or path, a profile field that projects must update.
 
+## 2.0.0 — 2026-10-27
+
+First release in `gm-ai-marketplace-angular-nestjs`, the Angular + NestJS copy of `gm-ai-marketplace`. The workflow is unchanged: the same four agents with the same roles and models (`spec-creator` and `implementation-planner` on Opus, `implementer` and `plan-verifier` on Sonnet), the planner's two passes, `/run-plan` with its implementer waves, verification loop (≤ 2 rounds) and review-fix loop (≤ 3 rounds), and `/workflow-retro`.
+
+### Changed
+
+- The planner's default file-type → skill mapping, used when a profile has no *Skill lanes*, now names `angular-developer`, `frontend-architecture`, `nestjs-best-practices`, `nestjs-backend-architecture` and `security`. Profiles whose skill lanes name `react-best-practices`, `next-best-practices`, `fastify-best-practices`, `react-testing-library` or `onion-architecture` must be updated: those skills no longer exist.
+- The planner flags DOM-measuring steps in Angular terms (`viewChild()`, `ElementRef`, `afterRenderEffect` across `@if` / `@defer`) for manual verification, and asks a `Q#` when a module that needs tests has no test command in the profile instead of inventing one.
+- Examples in the agents, the profile template and `mermaid-diagram` use Angular and NestJS (npm scripts, `ng test --include`, NestJS request pipeline, MVP roles).
+- Depends on `engineering-paved-path` `^2.0.0` and `architecture-review` `^2.0.0`; `research-tools` stays `^1.0.0`.
+
 ## 1.1.0 — 2026-10-14
 
 ### Added

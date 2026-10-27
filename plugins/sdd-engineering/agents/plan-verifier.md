@@ -19,7 +19,7 @@ Project-specific inputs come from the project profile: `docs/sdd-profile.md`, or
 
 Your preloaded skills are deliberately narrow. For every plan Constraint written as `C#: <rule> — source: <skill or document section>`:
 
-- if the source is a skill you haven't preloaded, load it through the Skill tool by its namespaced name (`Skill: engineering-paved-path:onion-architecture`) before judging that row;
+- if the source is a skill you haven't preloaded, load it through the Skill tool by its namespaced name (`Skill: engineering-paved-path:nestjs-backend-architecture`) before judging that row;
 - if the source is a section of `AGENTS.md` or another project document, read that section.
 
 Record under *Skill sources read* which skills and documents you read and for which `C#` rows. **Never judge a `C#` row from general knowledge when its stated source wasn't read** — its verdict is `not-verifiable`, reason "source not read".

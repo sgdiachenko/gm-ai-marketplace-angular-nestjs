@@ -4,7 +4,7 @@
 |---|---|
 | Status | Phase 1 implemented in `site/` |
 | Date | 2026-10-14 |
-| URL | https://sgdiachenko.github.io/gm-ai-marketplace/ |
+| URL | https://sgdiachenko.github.io/gm-ai-marketplace-angular-nestjs/ |
 
 ## Summary
 
@@ -45,7 +45,7 @@ A static site on GitHub Pages where anyone can search everything the marketplace
 
 - **GitHub Pages serves static files only.** Search, filters and URL state run in the browser. Every page is pre-rendered HTML, so content reads without JavaScript.
 - **The repository and the site are public.** The site shows only what the repository already shows.
-- **Base path** `/gm-ai-marketplace/`. All links are relative to it; no custom domain.
+- **Base path** `/gm-ai-marketplace-angular-nestjs/`. All links are relative to it; no custom domain.
 - **Repository conventions apply.** Scripts are Node.js 20+ without npm dependencies, shell is bash 3.2-compatible. Site code lives outside `plugins/`, so it never ships to users and never needs a plugin version bump.
 - **Content is English.** `scripts/check-marketplace.mjs` rejects Cyrillic in catalog metadata, frontmatter, plugin READMEs and repository docs.
 
@@ -117,7 +117,7 @@ Design deliverables: every screen below in light and dark themes, desktop and 36
 
 ```
 ┌───────────────────────────────────────────────────────────────┐
-│ gm-ai-marketplace          Getting started  What's new  GitHub │
+│ gm-ai-marketplace-angular-nestjs          Getting started  What's new  GitHub │
 ├───────────────────────────────────────────────────────────────┤
 │  ┌─────────────────────────────────────────────────────────┐  │
 │  │ 🔍 Describe a task, e.g. "review a pull request"     /  │  │
@@ -175,7 +175,7 @@ Behaviour and states:
 - **Badges, only when they apply:**
   - Needs setup: the plugin declares `userConfig` options.
   - Off by default: the catalog entry sets `"defaultEnabled": false`.
-- **Copy install:** copies the parent plugin's command, `claude plugin install <plugin> --marketplace sgdiachenko/gm-ai-marketplace`. Shows "Copied" for 2 seconds; screen readers hear it.
+- **Copy install:** copies the parent plugin's command, `claude plugin install <plugin> --marketplace sgdiachenko/gm-ai-marketplace-angular-nestjs`. Shows "Copied" for 2 seconds; screen readers hear it.
 - **Card click:** opens the artifact's page. Hooks, MCP servers and LSP servers open their section of the plugin page.
 
 ### Plugin page
@@ -187,8 +187,8 @@ Sections, in order (hide a section when it has nothing to show):
    - version, category, author, "Updated `<date>`";
    - description and badges.
 2. **Install.** Three tabs, each with a copy button:
-   - Terminal: `claude plugin install <plugin> --marketplace sgdiachenko/gm-ai-marketplace`
-   - In Claude Code: `/plugin install <plugin> --marketplace sgdiachenko/gm-ai-marketplace`
+   - Terminal: `claude plugin install <plugin> --marketplace sgdiachenko/gm-ai-marketplace-angular-nestjs`
+   - In Claude Code: `/plugin install <plugin> --marketplace sgdiachenko/gm-ai-marketplace-angular-nestjs`
    - For a project: the `.claude/settings.json` snippet for this plugin (phase 2 links to Team setup instead)
 
    Below the tabs: "Needs Claude Code 2.1.275 or later. Trouble installing? Getting started".
@@ -331,7 +331,7 @@ Versioned, because the phase 3 plugin reads it too.
 ```json
 {
   "version": 1,
-  "marketplace": { "name": "gm-ai-marketplace", "repo": "sgdiachenko/gm-ai-marketplace" },
+  "marketplace": { "name": "gm-ai-marketplace-angular-nestjs", "repo": "sgdiachenko/gm-ai-marketplace-angular-nestjs" },
   "build": { "commit": "abc1234", "date": "2026-10-14T10:00:00Z" },
   "categories": ["templates"],
   "items": [
@@ -342,13 +342,13 @@ Versioned, because the phase 3 plugin reads it too.
       "title": "hello",
       "plugin": "example",
       "pluginVersion": "0.1.0",
-      "description": "Confirms that the example plugin from gm-ai-marketplace is installed.",
+      "description": "Confirms that the example plugin from gm-ai-marketplace-angular-nestjs is installed.",
       "category": "templates",
       "keywords": [],
       "usage": "/example:hello",
       "badges": [],
       "url": "plugins/example/skills/hello/",
-      "source": "https://github.com/sgdiachenko/gm-ai-marketplace/blob/main/plugins/example/skills/hello/SKILL.md",
+      "source": "https://github.com/sgdiachenko/gm-ai-marketplace-angular-nestjs/blob/main/plugins/example/skills/hello/SKILL.md",
       "updated": "2026-10-13",
       "headings": [],
       "text": "Body as plain text, Markdown stripped"
@@ -441,6 +441,6 @@ The site prefills them through URL parameters, for example `issues/new?template=
 
 ## Later (phase 3)
 
-- **`catalog` plugin.** A skill that fetches `https://sgdiachenko.github.io/gm-ai-marketplace/index.json` and recommends artifacts for the user's request from inside Claude Code, in any language.
+- **`catalog` plugin.** A skill that fetches `https://sgdiachenko.github.io/gm-ai-marketplace-angular-nestjs/index.json` and recommends artifacts for the user's request from inside Claude Code, in any language.
 - **Keyword enrichment.** A maintainer script asks Claude for English and Ukrainian keywords and example requests for each artifact. The output is committed to `site/enrichment.json` and reviewed in the PR. CI only checks that it matches the content hashes, so no API key goes into CI.
 - **Maintainer health page.** Long descriptions, missing READMEs, context cost outliers.

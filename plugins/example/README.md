@@ -5,7 +5,7 @@ Template plugin. Copy this directory to start a new plugin; the steps are in `do
 ## Install
 
 ```
-/plugin install example --marketplace sgdiachenko/gm-ai-marketplace
+/plugin install example --marketplace sgdiachenko/gm-ai-marketplace-angular-nestjs
 ```
 
 ## Skills

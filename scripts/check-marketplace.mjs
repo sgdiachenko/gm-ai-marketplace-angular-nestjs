@@ -16,6 +16,10 @@ const PLUGIN_ROOT_REF = /\$\{CLAUDE_PLUGIN_ROOT\}(?:\\?")?\/([\w./-]+)/g;
 const SKILL_DIR_REF = /\$\{CLAUDE_SKILL_DIR\}(?:\\?")?\/([\w./-]+)/g;
 // Plugins are shared across projects: no plugin may point at one project's files or at its own source layout.
 const FORBIDDEN_REF = /dev-?digest|\.claude\/(?:skills|agents)\//i;
+// This marketplace targets Angular and NestJS. The React, Next.js, Fastify and onion skills it replaced must not
+// come back as hidden defaults, and no plugin names the project its architecture skills were generalized from.
+// A plugin's CHANGELOG.md may name them: it records what was removed.
+const RETIRED_REF = /(?<![\w-])(?:react-best-practices|next-best-practices|fastify-best-practices|react-testing-library|onion-architecture)(?![\w-])|gm-?vocabulary|\bword-?groups?\b/i;
 // SECURITY.md: no file in a plugin carries a path from one machine or a credential.
 const ABSOLUTE_HOME = /(?:\/Users\/|\/home\/|[A-Za-z]:\\Users\\)[\w.-]+/;
 const SECRET = /sk-ant-[\w-]{16,}|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_\w{30,}|AKIA[0-9A-Z]{16}|xox[abprs]-[\w-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY-----/;
@@ -215,6 +219,10 @@ function checkFile(file, pluginDir) {
   const line = text.split('\n').findIndex((l) => FORBIDDEN_REF.test(l));
   if (line !== -1) {
     fail(`${rel(file)}:${line + 1}: names "${FORBIDDEN_REF.exec(text)[0]}"; plugins are shared, so take project paths from inputs and call skills and agents by <plugin>:<name>`);
+  }
+  const retired = path === 'CHANGELOG.md' ? -1 : text.split('\n').findIndex((l) => RETIRED_REF.test(l));
+  if (retired !== -1) {
+    fail(`${rel(file)}:${retired + 1}: names "${RETIRED_REF.exec(text)[0]}"; this marketplace is Angular + NestJS only, and plugins carry no source-project names (AGENTS.md)`);
   }
   const home = text.split('\n').findIndex((l) => ABSOLUTE_HOME.test(l));
   if (home !== -1) {

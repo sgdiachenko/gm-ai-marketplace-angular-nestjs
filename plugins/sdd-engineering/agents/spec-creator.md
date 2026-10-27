@@ -158,7 +158,7 @@ The main session's prompt carries:
    new spec that contradicts an `approved`/`implemented` one must supersede
    it explicitly, or ask.
 4. Locate the module boundaries the feature crosses: shared contracts and
-   types, routes and API handlers, client data hooks, background jobs,
+   types, routes and API handlers, client data services, background jobs,
    external integrations. Cite `path:line`.
 
 ## Research requests (RQ#)

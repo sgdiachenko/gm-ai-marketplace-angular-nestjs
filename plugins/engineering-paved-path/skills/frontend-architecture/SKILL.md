@@ -1,194 +1,91 @@
 ---
 name: frontend-architecture
-description: "Frontend architecture: where a file goes and which module may import which. Use when placing a new component, hook, util or constant, when a folder grows unmanageable, when reviewing structure, or when setting up a React or Next.js codebase. Covers feature folders, dependency direction, public APIs and App Router layout."
+description: "Angular frontend architecture: where new code goes, how to split it and which folder may import which. Use when adding or moving a component, routed page, dialog, service, state holder, constant, enum, util, model, form, guard, interceptor or route, when deciding whether to split a component, or when reviewing frontend structure. Placement and layering only; Angular API usage is engineering-paved-path:angular-developer."
+metadata:
+  tags: angular, frontend, architecture, placement, feature-folders, boundaries
 ---
 
-# Frontend Architecture
+# Frontend architecture (Angular)
 
-This skill answers two questions, and only these two:
+This skill answers three questions about an Angular app, and only these:
 
 1. **Where does this file go?**
 2. **Is this import allowed?**
+3. **Should this component be split, and where does its logic go?**
 
-Everything else — how to write the component, which hook to use, how to fetch —
-belongs to `engineering-paved-path:react-best-practices` and
-`engineering-paved-path:next-best-practices`. Do not restate their rules here.
+How to write the code — signals, `inject()`, forms, routing, HTTP, testing — belongs to `engineering-paved-path:angular-developer`. Placement: [references/placement-matrix.md](references/placement-matrix.md). Sources: [references/sources.md](references/sources.md).
 
-## Severity Levels
+## Project rules win
 
-- **CRITICAL** — breaks modularity; the codebase degrades into a big ball of mud
-- **HIGH** — causes coupling that makes future changes expensive
-- **MEDIUM** — hurts navigability and consistency
+The project's `AGENTS.md`, architecture docs, the SDD profile (`docs/sdd-profile.md`) and its lint configuration override every default here. When the project prescribes a pattern — MVP or MVVM with a controller or presenter per view, a facade per feature, a state library — use it and map the roles below onto it. Map the reference folders (`features/`, `shared/`) to the project's real ones before judging an import. Never ask a project to restructure to match this skill.
 
----
+Rules apply to **new** code. Existing files are not renamed, moved or restructured as a side effect of other work; editing an existing file keeps its name and style.
 
-## The One Rule (CRITICAL)
+## Severity for reviewers
 
-**Dependencies flow in one direction: `shared → features → app`.**
+- **CRITICAL** — breaks the dependency direction below or a boundary the project's linter enforces.
+- **WARNING** — HTTP or business rules in a component, a feature reaching into another feature's internals, logic driven by `effect`.
+- **SUGGESTION** — placement, naming or file size that hurts navigability but breaks no rule.
 
-- `shared/*` may be imported by anyone. It may import nothing but other `shared/*`.
-- `features/<x>/*` may import `shared/*`. It may **not** import another feature.
-- `app/*` (routes, providers, composition) may import features and shared.
-  Nothing imports `app/*`.
+## Dependency direction (CRITICAL)
 
-Two features that need the same thing do **not** import each other — the shared
-part moves down into `shared/`, or the two features are composed together at the
-`app/` level.
+**Imports flow one way: `app shell → features → shared`.**
 
-Why one direction: cost of software ≈ cost of change ≈ degree of coupling.
-A cycle between modules means neither can be changed or deleted alone.
+- `shared/**` may be imported by anyone. It imports only other `shared/**` code and libraries — never a feature.
+- `features/<feature>/**` may import `shared/**`. It does not import another feature's internals. Two features that need the same thing move it down into `shared/`, or are composed by the app shell or the router.
+- The app shell (`app.config.ts`, `app.routes.ts`, the root component) composes features and shared code. Nothing imports it.
 
-The rule is worthless unless a linter enforces it → [boundaries.md](boundaries.md).
+**The delete test:** removing a feature folder should break only the routes that load it. If unrelated features break too, a boundary leaked.
 
-## The Delete Test (CRITICAL)
+When the project has a boundary linter (ESLint `no-restricted-imports` zones, `eslint-plugin-boundaries`, Sheriff, dependency-cruiser), its rule names are the rules; cite them. Without one, the direction is a convention; adding enforcement is a separate, reviewed change.
 
-Before accepting a structure, ask: **if I `rm -rf` this feature folder, what
-breaks?**
+## Rules for new code
 
-- Correct answer: the routes/pages that composed it, and nothing else.
-- Wrong answer: three other features, two shared components, and the global store.
+1. **Feature-first.** Group by feature (`features/<feature>/` or the project's equivalent), never by code type. No top-level `components/`, `services/`, `utils/`, `helpers/` folders.
+2. **Colocate.** A unit's `.ts`, template, styles and `.spec.ts` share a folder and a base name. Every logic-bearing unit gets a spec beside it.
+3. **Place by consumers.** One feature uses it: keep it in that feature. A second feature needs it: move it to `shared/<topic>/` then, not before.
+4. **One concept per file**, named after its main identifier in kebab-case. Never `utils.ts`, `helpers.ts`, `common.ts`, `constants.ts`, `types.ts`.
+5. **Naming.** Follow the project's existing convention. Without one, follow the Angular style guide for the installed version: from v20 the CLI generates files without a type suffix (`book-list.ts` → `BookList`) and the class name carries the role. Keep `.spec.ts`.
+6. **Where each kind goes:**
 
-If deleting a feature breaks other features, the boundary is wrong. Run this
-test mentally on every new cross-module import.
-
-## The Rule of Two (HIGH)
-
-**Code is born local. It moves up only when a second consumer appears.**
-
-- Used in one file → declare it in that file, do not export it.
-- Used across one feature → `features/<x>/` at the feature root.
-- Used by two or more features → move to `shared/`.
-
-Never create a shared abstraction for a single caller "because we'll need it
-later". Colocate until it hurts, then abstract. Premature promotion to `shared/`
-is the single most common cause of an unmaintainable `utils/` folder.
-
-## Baseline Structure
-
-Start here. It is the Bulletproof React layout, which scales from a small app to
-a large one without a rewrite.
-
-```
-src/
-├── app/            # routes, providers, root layout — composition only
-├── features/       # domain modules; the bulk of the code lives here
-│   └── <feature>/
-│       ├── api/          # requests + query hooks for this feature
-│       ├── components/   # UI owned by this feature
-│       ├── hooks/        # application logic (orchestration, state, I/O)
-│       ├── lib/          # pure domain functions (no React)
-│       ├── stores/       # feature-scoped client state
-│       ├── constants.ts
-│       ├── types.ts
-│       └── index.ts      # public API of the feature (optional, see boundaries.md)
-├── components/     # shared, domain-agnostic UI (design system)
-├── hooks/          # shared hooks
-├── lib/            # configured third-party wrappers (axios, date-fns, i18n)
-├── config/         # app config + validated env
-├── types/          # cross-feature types (should be nearly empty)
-└── utils/          # pure, domain-neutral functions, grouped by topic
-```
-
-Rules for this tree:
-
-- **Only create the subfolders a feature actually needs.** An empty `stores/` or
-  a `types.ts` with one line is noise.
-- A feature folder with 2 files does not need 6 subfolders — start flat inside
-  the feature, split when a folder passes ~7 files.
-- `components/` (shared) must never import from `features/`. If a shared
-  component needs domain data, it is not shared — it takes props instead.
-- `types/` at the root is a smell if it grows. Cross-feature types should be
-  rare → [placement.md](placement.md#types-and-schemas).
-
-**Do not adopt full Feature-Sliced Design (7 layers, `entities`/`widgets`,
-same-layer import bans) unless the team already knows it.** Its useful ideas —
-the explicit public API per slice and the `ui`/`model`/`api`/`lib` segment
-naming — are already folded into the structure above.
-
-## Where Does This Go?
-
-Full decision trees in [placement.md](placement.md). The short version:
-
-| Artifact | Default home |
+| Kind | Location |
 |---|---|
-| Component used by one route | next to the route (`app/<route>/_components/`) |
-| Component used by one feature | `features/<x>/components/` |
-| Component with no domain knowledge | `components/` (shared design system) |
-| Pure domain calculation / validation | `features/<x>/lib/` — plain function, no React |
-| Orchestration, state, effects, I/O | `features/<x>/hooks/` — a custom hook |
-| Anything touching DB, secrets, auth | server-only data access layer → [nextjs.md](nextjs.md#data-access-layer) |
-| Constant used in one file | that file, above the component |
-| Constant used across a feature | `features/<x>/constants.ts` |
-| Environment variable | `config/env.ts` — the **only** module reading `process.env` |
-| Type used in one file | that file, not exported |
-| Type/Zod schema shared client↔server | a contract module both sides import |
-| Formatting/parsing helper | named by what it provides (`format-currency.ts`), never `utils.ts` |
-| Server-owned data | a server-state library (TanStack Query) or RSC — not `useState` |
-| Client-owned UI state | local state; lift only as far as needed |
+| Routed page | its own folder in the feature; lazy-loaded from the routes |
+| Presentational component | the owning feature's folder, or `shared/ui/<name>/` when generic |
+| Dialog | component + its data type (+ form) in one folder |
+| HTTP calls | one API service (or gateway) per backend resource — nothing else calls `HttpClient` |
+| Orchestration | a feature service, controller or presenter: calls the API service, updates state, exposes view state |
+| State | private writable signals in a service, exposed read-only; a state library only when the project already uses one |
+| Pure domain logic | an exported function beside its consumer, no Angular imports, unit-tested |
+| Constants, enums | a narrowly scoped file beside the consumer (`<name>.const.ts`, `<name>.enum.ts`, or the project's suffixes) |
+| Models / DTOs | one type per file in the feature (`models/` or `contracts/`, as the project names it) |
+| Form model and validation | beside the form; validation rules in one schema or validator set |
+| Injection tokens | `<name>.token.ts`, plus a `provideX()` function when configurable |
+| Guards, interceptors, resolvers | functional, in the feature that owns them |
+| Routes | `app.routes.ts` with lazy `loadComponent` / `loadChildren`; a `<feature>.routes.ts` once a feature has several routes |
 
-## Layers of Logic (HIGH)
+## Business logic
 
-Push logic down to the simplest layer that can hold it:
+- **Components present.** They bind inputs and outputs, forward events, and read view state. They hold no HTTP calls and no domain rules.
+- **Logic that needs DI** lives in a service (or the project's controller / presenter). **Logic that needs no DI** is a pure function.
+- **Derive, don't copy.** View state is `computed` from source signals; don't mirror state into a second writable signal.
+- **Don't drive business logic from `effect`.** Effects are for syncing with the outside (storage, logging, third-party DOM). Actions are explicit method calls.
+- **Encapsulate state.** Writable signals are private; expose `asReadonly()` or `computed`; mutate through named methods.
+- **Domain language.** Name features, files, types and UI strings after the domain concept, with one term per concept, as the project already uses it. A business rule beyond a field check is a named, framework-free function with a unit test; services call it.
 
-1. **Pure functions** — calculations, validation, transformation, formatting.
-   No React, no I/O. Trivially unit-testable. This is where business rules live.
-2. **Custom hooks** — orchestration: wiring state, effects, and external
-   systems. If you are writing `useEffect` by hand in a component, that is the
-   signal to extract a hook.
-3. **Components** — composition and rendering only. No domain calculations in
-   the component body.
-4. **Server / data access layer** — anything touching a database, secrets, or
-   authorization.
+## Splitting components
 
-A component that contains a business rule cannot be reused and can only be
-tested through the DOM. Move the rule to layer 1 and the component gets both.
+Split when one of these holds: the component has more than one responsibility; the template is long or deeply nested (roughly 150+ lines); a `@for` item has its own logic; a part is reused or worth testing alone. Don't split only to shrink a file.
 
-## Anti-Patterns (CRITICAL)
+- **Container** (routed page or smart parent): injects the services or controller, passes data down, handles outputs.
+- **Presentational**: `input()`, `output()`, `model()` only — no service with state, no HTTP.
+- Shared UI is generic: no domain names, no feature imports.
 
-- **`utils.ts` / `helpers.ts` / `common.ts` as a destination.** A junk drawer:
-  it grows without bound, nobody knows what is already in it, and functions get
-  duplicated. Name a module after **what it provides**, not what it contains.
-- **Cross-feature imports.** `features/billing` importing `features/auth`
-  welds them together permanently. Compose at `app/` or move the shared part down.
-- **A `shared/` component importing feature code.** Inverts the dependency
-  direction; the design system now cannot be reused or extracted.
-- **One global `constants/index.ts`.** Every file that needs one constant pulls
-  in all of them, and the file becomes a merge-conflict magnet.
-- **`process.env` read in more than one module.** Config becomes untraceable and
-  secrets leak into client bundles.
-- **Barrel files used *inside* a module.** Internal files importing through their
-  own `index.ts` is the standard way to create
-  `Cannot access 'X' before initialization` → [boundaries.md](boundaries.md#barrel-files).
-- **A folder named after a pattern instead of a domain** (`containers/`,
-  `hocs/`, `atoms/`). The structure should name the product, not the technology used.
-- **Promoting to `shared/` on the first consumer.** See the Rule of Two.
+## Review checklist
 
-## Review Checklist
-
-When reviewing structure, check in this order:
-
-1. Does any import point "upward" or sideways between features? (blocking)
-2. Would the delete test pass for the touched feature? (blocking)
-3. Is new code placed at the lowest layer that can hold it — pure function
-   before hook, hook before component?
-4. Was anything promoted to `shared/`/`utils/` with only one consumer?
-5. Does a new file's name say what it provides?
-6. Is `process.env` read anywhere outside `config/env.ts`?
-7. Next.js only: is `'use client'` as close to the leaves as it can be, and does
-   the route file stay thin? → [nextjs.md](nextjs.md)
-
-## Detail References
-
-- [placement.md](placement.md) — decision trees per artifact: components,
-  business logic, constants, config/env, types and Zod schemas, utils vs lib vs
-  services, state ownership, tests
-- [boundaries.md](boundaries.md) — dependency direction, public APIs, the barrel
-  file trade-off, and ready-to-paste ESLint / dependency-cruiser enforcement
-- [nextjs.md](nextjs.md) — App Router: what belongs in `app/`, private folders
-  and route groups, the server/client boundary, the data access layer
-
-## Project Conventions Override This Skill
-
-A repository's own `AGENTS.md` / `CLAUDE.md` wins over every default here.
-Read it first and follow its naming and layout, even where it contradicts the
-baseline structure above. This skill supplies the reasoning, not the last word.
+1. Does any changed import point against the direction above, or cross into another feature's internals? (blocking)
+2. Does a component call `HttpClient`, hold a business rule or drive logic from `effect`?
+3. Is the new file in the owning feature, or in `shared/` with two or more consumers?
+4. One concept per file, no generic file name, a spec beside every logic-bearing unit?
+5. Are writable signals private and view state derived with `computed`?
+6. Do the project's lint and boundary checks pass? Run the commands its profile or `AGENTS.md` lists.

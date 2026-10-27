@@ -1,11 +1,11 @@
 {
   "name": "research-tools",
   "displayName": "Research tools",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Read-only researcher agent that answers a concrete question with evidence from the repository or external sources",
   "author": {
     "name": "Serhii Diachenko"
   },
-  "repository": "https://github.com/sgdiachenko/gm-ai-marketplace",
+  "repository": "https://github.com/sgdiachenko/gm-ai-marketplace-angular-nestjs",
   "keywords": ["research", "agent", "read-only", "evidence"]
 }

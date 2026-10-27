@@ -87,7 +87,7 @@ end
 
 ## Sequence Diagrams
 
-Use for API flows, service interactions, and request/response patterns. Ideal for documenting Express routes, middleware chains, and client-server communication.
+Use for API flows, service interactions, and request/response patterns. Ideal for documenting request pipelines (guards, pipes, interceptors), service calls, and client-server communication.
 
 ### Syntax
 

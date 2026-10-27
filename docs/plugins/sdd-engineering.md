@@ -1,6 +1,6 @@
 # sdd-engineering — maintainer notes
 
-The Spec-Driven Development workflow. Depends on `engineering-paved-path`, `research-tools` and `architecture-review`, each `^1.0.0`. Claude Code only (its value is in agents; see `docs/codex-compatibility.md`, rule 5). Spec: `specs/sdd-engineering.md`.
+The Spec-Driven Development workflow. Depends on `engineering-paved-path` `^2.0.0`, `research-tools` `^1.0.0` and `architecture-review` `^2.0.0`. Claude Code only (its value is in agents; see `docs/codex-compatibility.md`, rule 5). Spec: `specs/sdd-engineering.md`.
 
 ## Where each component came from
 
@@ -21,6 +21,16 @@ Ported from `sgdiachenko/dev-digest` at `1b694bc41a61`.
 | `skills/mermaid-diagram/` | `.claude/skills/mermaid-diagram/` | reference to a missing `references.md` replaced by the Mermaid docs link |
 
 Not ported, by decision (see the spec's non-goals): `brainstorm`, `test-writer`, `doc-writer`, `security-reviewer`, `stack-reviewer`, `conventions-reviewer`, `pr-self-review` and its gate hook, dev-digest's own specs, plans and retros.
+
+## The Angular + NestJS copy (2.0.0)
+
+This repository is a copy of `gm-ai-marketplace` for Angular and NestJS. The workflow itself is unchanged and must stay so unless a change is deliberate: four agents with the same roles, tools and models (`spec-creator` and `implementation-planner` on Opus, `implementer` and `plan-verifier` on Sonnet), the planner's two passes, `/run-plan`'s phases with the verification loop (≤ 2 rounds) and the review-fix loop (≤ 3 rounds), the commit/PR gate and `/workflow-retro`. What changed is stack knowledge only:
+
+- the planner's default file-type → skill mapping (`angular-developer`, `frontend-architecture`, `nestjs-best-practices`, `nestjs-backend-architecture`, `security`);
+- Angular wording for DOM-measuring steps (manual verification) and a `Q#` when a module that needs tests has no test command;
+- examples in agents, the profile template and `mermaid-diagram`.
+
+An example profile for an Angular `client/` + NestJS `server/` starter lives in `docs/examples/sdd-profile-angular-nestjs-starter.md`. SDD-light (a reduced flow) is not part of this copy.
 
 ## Platform facts the design relies on
 

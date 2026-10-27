@@ -18,12 +18,12 @@ Everything under `plugins/<name>/` is copied to the machine of every user who in
 
 ## Report a vulnerability
 
-Don't open a public issue. Use GitHub's private vulnerability reporting for this repository, or contact the code owner in `.github/CODEOWNERS`.
+The repository is private: report a vulnerability to the code owner in `.github/CODEOWNERS` directly, not in an issue other collaborators can read.
 
 ## After an unsafe release
 
-1. **Stop the spread.** Publish the last good files under a new, higher version: `node scripts/rollback.mjs <name> <good-version>`, then a PR as for any release (`docs/releasing.md`). Users with auto-update on get it in their next session; users on the stable channel are unaffected unless the release was promoted there.
+1. **Stop the spread.** Publish the last good files under a new, higher version: `node scripts/rollback.mjs <name> <good-version>`, then a PR as for any release (`docs/releasing.md`). Users with auto-update on get it in their next session; users on a stable channel, once one exists, are unaffected unless the release was promoted there.
 2. **Rotate first, clean up second**, if a secret was published: revoke it at its provider before anything else. Removing it from the repository doesn't remove it from clones, forks or installed caches.
-3. **Tell users with auto-update off** to run `claude plugin update <name>@gm-ai-marketplace`.
+3. **Tell users with auto-update off** to run `claude plugin update <name>@gm-ai-marketplace-angular-nestjs`.
 4. **Remove the plugin** if no safe version exists: delete its entry, record `"<name>": null` in `renames`, and set `forceRemoveDeletedPlugins` so Claude Code uninstalls it at session start (`docs/releasing.md`).
 5. **Record what happened** in `INSIGHTS.md` and add a check that would have caught it.

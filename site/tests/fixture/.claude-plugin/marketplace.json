@@ -1,5 +1,5 @@
 {
-  "name": "gm-ai-marketplace",
+  "name": "gm-ai-marketplace-angular-nestjs",
   "description": "Claude Code plugins for the team",
   "owner": { "name": "Fixture Owner" },
   "plugins": [

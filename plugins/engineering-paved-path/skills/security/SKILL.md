@@ -1,15 +1,15 @@
 ---
 name: security
-description: "Web application security best practices based on OWASP Top 10:2025. Use when reviewing code for vulnerabilities, implementing auth/authorization, handling user input, working with file uploads, managing secrets, or building API endpoints. Covers React, Express, MongoDB, and JWT security."
+description: "Web application security based on OWASP Top 10:2025 for Angular frontends and NestJS APIs: access control with guards, input validation with pipes and DTOs, injection (MongoDB and SQL), XSS and Angular sanitization, CORS and headers, authentication and JWT, secrets, logging, error handling. Use when reviewing code for vulnerabilities, implementing auth, handling user input or uploads, managing secrets or building API endpoints."
 ---
 
-# Security Best Practices — OWASP Top 10:2025
+# Security best practices — OWASP Top 10:2025
 
-Security guidance for React + Express + MongoDB + JWT stacks. See `examples.md` for unsafe/safe code pairs, `checklists.md` for quick checklists, `references.md` for all sources.
+Security guidance for an Angular frontend with a NestJS API, typically on MongoDB (Mongoose) or a SQL database, with token or session authentication. See `examples.md` for unsafe/safe code pairs, `checklists.md` for quick checklists, `references.md` for all sources. Nest API usage belongs to `engineering-paved-path:nestjs-best-practices`; Angular API usage to `engineering-paved-path:angular-developer`.
 
 ---
 
-## Core Philosophy — Confidence-Based Review
+## Core philosophy — confidence-based review
 
 Before flagging any issue, **trace the data flow** and confirm the input source.
 
@@ -19,250 +19,238 @@ Before flagging any issue, **trace the data flow** and confirm the input source.
 | **MEDIUM** | Vulnerable pattern, input source unclear | **Note** for manual verification |
 | **LOW** | Theoretical / best-practice deviation | **Do not report** — mention only if asked |
 
-**Do NOT flag**: test files, dead code, server-controlled values (env vars, config constants), framework-mitigated patterns (React JSX escaping, Mongoose parameterized queries), development-only code gated by `NODE_ENV`.
+**Do NOT flag**: test files, dead code, server-controlled values (configuration, constants), framework-mitigated patterns (Angular template interpolation and property binding, which sanitize; Mongoose casting against a strict schema; parameterized ORM queries), development-only code that never ships.
 
-> **Golden rule**: `fetch(process.env.API_URL)` = safe. `fetch(req.query.url)` = vulnerable. Always ask: **"Can an attacker control this value?"**
+> **Golden rule**: `http.get(environment.apiUrl)` = safe. `http.get(route.snapshot.queryParams['next'])` = vulnerable. Always ask: **"Can an attacker control this value?"**
 
 ---
 
 ## OWASP Top 10:2025
 
-| # | Category | Key Risk in This Stack |
+| # | Category | Key risk in this stack |
 |---|----------|----------------------|
-| A01 | **Broken Access Control** | Missing auth middleware, IDOR, no ownership checks |
-| A02 | **Security Misconfiguration** | Helmet disabled, CORS wildcard, stack traces in prod |
-| A03 | **Supply Chain Failures** | Compromised npm packages, typosquatting |
-| A04 | **Cryptographic Failures** | Weak JWT secret, low bcrypt cost, hardcoded secrets |
-| A05 | **Injection** | MongoDB operator injection, XSS, command injection |
-| A06 | **Insecure Design** | Missing rate limiting, no threat model |
-| A07 | **Authentication Failures** | jwt.decode() instead of verify(), brute force |
-| A08 | **Integrity Failures** | Mass assignment via req.body spread, unvalidated uploads |
-| A09 | **Logging Failures** | Passwords in logs, missing auth event audit trail |
-| A10 | **Exceptional Conditions** | Fail-open auth, stack trace leaks, missing async error handling |
+| A01 | **Broken Access Control** | A route without a guard, IDOR, owner taken from the body instead of the principal |
+| A02 | **Security Misconfiguration** | CORS wildcard with credentials, no security headers, verbose errors, unvalidated config |
+| A03 | **Supply Chain Failures** | Compromised npm packages, typosquatting, unpinned builders and plugins |
+| A04 | **Cryptographic Failures** | Weak JWT secret, `none` algorithm, low password-hash cost, hard-coded secrets |
+| A05 | **Injection** | MongoDB operator injection, SQL string building, XSS through `bypassSecurityTrust*`, command injection |
+| A06 | **Insecure Design** | No rate limiting on login or expensive endpoints, no threat model |
+| A07 | **Authentication Failures** | Decoding a token without verifying it, user enumeration, brute force |
+| A08 | **Integrity Failures** | Mass assignment through a body without whitelisting, unvalidated uploads |
+| A09 | **Logging Failures** | Tokens or passwords in logs, no audit trail for auth events |
+| A10 | **Exceptional Conditions** | A guard that fails open, errors swallowed into 200, stack traces in responses |
 
 ---
 
-## A01 — Broken Access Control
+## A01 — Broken access control
 
-- **Deny by default** — every route is protected unless explicitly public
-- Apply `auth` middleware as a **barrier** (via `router.use(auth)`) rather than per-route to prevent omissions
-- **Always check ownership** on update/delete — being authenticated does not mean authorized for all resources
-- Compare `resource.author.toString() === req.user.userId` plus admin role escape hatch
-- React route guards are UX only — **server must enforce all access control**
-- Test both horizontal (user A → user B's data) and vertical (author → admin endpoints) escalation
-
----
-
-## A02 — Security Misconfiguration
-
-- **Helmet**: Enable with `crossOriginResourcePolicy: 'cross-origin'` for uploads. If CSP disabled, implement custom CSP restricting `script-src` to `'self'`
-- **CORS**: Explicit origin allowlist with `credentials: true`. Never `origin: '*'` or `origin: true` with credentials
-- **Error handler**: Generic message in production, stack traces only when `NODE_ENV === 'development'`
-- **Vite env vars**: `VITE_*` prefixed vars are **public in the client bundle** — never put secrets there
-- **MongoDB**: Require auth + TLS in production, never expose port 27017 to internet, use `serverSelectionTimeoutMS`
-- **Defaults**: Change seed credentials, disable debug middleware in production
+- **Deny by default.** Register an auth guard globally (`APP_GUARD`) and mark public routes explicitly with metadata, instead of remembering `@UseGuards()` on each route.
+- **Ownership in the query.** Update and delete filter by the resource id **and** the caller's identity: `{ _id: id, ownerId: user.id }`. Being authenticated is not being authorized.
+- **The owner comes from the principal or the route the guard checked**, never from a body field.
+- **Another user's resource returns 404**, so ids can't be probed.
+- **Angular route guards (`CanActivateFn`, `CanMatchFn`) are UX only** — the API enforces every access rule.
+- Test both horizontal (user A → user B's data) and vertical (user → admin endpoint) escalation.
 
 ---
 
-## A03 — Supply Chain Failures
+## A02 — Security misconfiguration
 
-- Run `npm audit` before every release. Commit `package-lock.json` always.
-- Pin exact versions for security-sensitive packages
-- Before adding a dependency: check CVEs, maintenance activity (< 6 months), download count (> 10K/week), scope of access (network/fs/env)
-- Watch for typosquatting (`expres` vs `express`)
-- Vite plugins run with full Node.js access during build — use only well-known publishers
+- **CORS**: `app.enableCors({ origin: <allowlist from config>, credentials })`. Never `origin: '*'` or `origin: true` with credentials.
+- **Headers**: `helmet()` on the Express adapter (Content-Security-Policy, HSTS, `X-Content-Type-Options`), or the same headers set by the reverse proxy.
+- **Errors**: Nest's default filter already hides stack traces for unknown errors; a custom filter must keep that.
+- **Configuration**: validated at startup (`ConfigModule.forRoot({ validate })`); a missing secret stops the app.
+- **Angular environments**: everything in `environment.ts` and in the bundle is public. No secrets in the frontend, ever.
+- **Database**: authentication and TLS in production, port not exposed to the internet, connection timeouts set.
 
 ---
 
-## A04 — Cryptographic Failures
+## A03 — Supply chain failures
 
-- **Passwords**: bcrypt with salt rounds >= 10 (never MD5, SHA-1/256, or plain text). Preferred: Argon2id > bcrypt > scrypt
-- **JWT secret**: Minimum 256-bit (32 bytes) cryptographically random, from `process.env.JWT_SECRET`
-- **JWT signing**: Explicitly set `algorithm: 'HS256'` and `expiresIn`. Never allow `none` algorithm
-- **JWT verification**: Always `jwt.verify()`, never `jwt.decode()` (decode doesn't check signature)
-- **JWT payload**: Never store sensitive data (it's base64-encoded, not encrypted)
-- **Transit**: HTTPS in production, `Strict-Transport-Security` header via Helmet
-- **At rest**: Encrypt sensitive fields if storing PII. Never store raw credentials in MongoDB
+- Run `npm audit` before every release. Commit the lockfile.
+- Before adding a dependency: check advisories, maintenance (< 6 months), downloads, and what it can access (network, filesystem, env).
+- Watch for typosquatting (`@nestjs/comon`, `angluar-*`).
+- Angular builders, schematics and Nest CLI plugins run with full Node.js access at build time — only well-known publishers.
+- Apply `overrides` / `resolutions` for vulnerable transitive packages, and remove them once upstream catches up.
+
+---
+
+## A04 — Cryptographic failures
+
+- **Passwords**: Argon2id or bcrypt (cost ≥ 10); never MD5, SHA-1/256 or plain text.
+- **JWT secret**: at least 256 bits, random, from configuration.
+- **JWT signing and verification**: pin the algorithm on both sides, set `expiresIn`; never accept `none`. With `@nestjs/jwt`, verify through `JwtService.verifyAsync()`; never trust `decode()`.
+- **JWT payload**: no sensitive data — it is encoded, not encrypted.
+- **Token storage in Angular**: prefer an `HttpOnly`, `Secure`, `SameSite` cookie set by the API; a token in `localStorage` is readable by any XSS.
+- **Transit**: HTTPS in production, HSTS.
 
 ---
 
 ## A05 — Injection
 
-### MongoDB NoSQL Injection
-- **Cast input types explicitly**: `String(req.body.email)` — neutralizes operator objects like `{ "$gt": "" }`
-- Never put user input in `$where`, `$expr`, or `$function` (server-side JS execution)
-- Never construct regex from user input without escaping (`str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')`)
-- Use Mongoose strict schemas with type definitions. Consider `mongo-sanitize` to strip `$` keys
+### MongoDB operator injection
+- Validate types before they reach a filter: a global `ValidationPipe` with `whitelist` and `forbidNonWhitelisted`, DTO fields typed `@IsString()`. A raw body field can be `{ "$ne": null }`.
+- Never put user input in `$where`, `$expr` with `$function`, or `mapReduce`.
+- Escape user input before building a `RegExp` (`str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')`).
+- Keep Mongoose schemas strict (the default). Validate ObjectId strings before casting.
 
-### Cross-Site Scripting (XSS)
-- React auto-escapes JSX — that's your default safety net
-- **Never** use `dangerouslySetInnerHTML` without DOMPurify sanitization (allowlist tags/attributes)
-- Validate URLs before `href`/`src` — reject `javascript:` protocol, allow only `http:`/`https:`
-- Blog content and AI-generated content are high-risk for stored XSS — sanitize on input AND output
-- Set CSP headers to mitigate any XSS that slips through
+### SQL
+- Use the ORM's query builder or parameters; never concatenate input into a query string or a raw `query()` call.
 
-### Command Injection
-- Never use `exec()` or `spawn({ shell: true })` with user input
-- Use `execFile()` which passes arguments directly without shell interpretation
+### Cross-site scripting (Angular)
+- **Interpolation and property binding are sanitized** — the default safety net.
+- **`bypassSecurityTrustHtml` / `Url` / `ResourceUrl` / `Script` / `Style`** turn sanitization off. Flag any call on a value an attacker can influence; sanitize with DOMPurify first or don't bypass.
+- **Direct DOM writes** (`elementRef.nativeElement.innerHTML = …`, `Renderer2.setProperty(el, 'innerHTML', …)`, `document.write`) skip Angular's sanitizer.
+- **`[href]` / `[src]`** are sanitized for `javascript:` URLs by Angular; a bypassed or manually set URL is not — allow only `http:` / `https:`.
+- Never build templates from user input at runtime (JIT compilation of strings).
+- Server-rendered pages: escape data serialized into the HTML; CSP as defence in depth.
 
----
-
-## A06 — Insecure Design
-
-**Rate limiting strategy:**
-
-| Endpoint | Limit | Window |
-|----------|-------|--------|
-| Login | 5 req | 15 min |
-| Comments | 5 req | 1 min |
-| AI generation | 3 req | 1 min |
-| File upload | 10 req | 1 min |
-| General API | 100 req | 1 min |
-
-- **AI content generation**: Sanitize AI output before storing (XSS risk), validate prompt length, set request timeouts, never expose API keys to client, log prompts for audit
-- **Comments**: Rate limit + sanitize + moderation (`isApproved` flag)
+### Command injection
+- Never `exec()` or `spawn({ shell: true })` with user input; use `execFile()` with an argument array.
 
 ---
 
-## A07 — Authentication Failures
+## A06 — Insecure design
 
-- **Login**: Find user by email with `isActive: true`, compare with bcrypt, return generic "Invalid credentials" for both wrong email and wrong password (prevents enumeration)
-- **JWT claims**: `{ userId, email, name, role }` — minimum viable
-- **Token extraction**: Support `Bearer <token>` from Authorization header
-- **Auth middleware must be fail-closed**: `next()` only called on successful `jwt.verify()`. Missing `return` before error response = fail-open vulnerability
-- **Rate limit login**: `loginLimiter` on login endpoint (5 attempts / 15 min)
-- **Password model**: Hash in `pre('save')` hook only if modified, `comparePassword` instance method, `toJSON` strips password from all responses
-- Consider account lockout, progressive delays, CAPTCHA after N failures
+- **Rate limiting** with `@nestjs/throttler` (or the gateway): tight limits on login, sign-up, password reset, and expensive or paid endpoints; a general limit for the rest.
+- **Limits everywhere**: body size, page size (`limit` capped by the server), upload size, request timeouts.
+- AI or third-party calls: validate prompt length, set timeouts, keep keys server-side, sanitize output before storing it.
 
 ---
 
-## A08 — Software and Data Integrity
+## A07 — Authentication failures
 
-- **Mass assignment prevention**: Destructure only expected fields from `req.body` — never `Model.create(req.body)` (attacker can set `role: 'admin'`)
-- **Mongoose schemas**: Use `enum` for fixed values, `required` on mandatory fields, `minlength`/`maxlength`, `strict: true` (default)
-- **File upload integrity**: MIME type allowlist, check magic bytes for high-security. MIME types can be spoofed
-- **CSP**: Restrict `script-src`, `frame-ancestors 'none'`, `object-src 'none'`
-
----
-
-## A09 — Logging and Alerting
-
-**Log these**: Login success/failure, token rejection, admin actions, file uploads, rate limit hits, 5xx errors, 403 denials
-**Never log**: Passwords, JWT tokens, API keys, credit cards, SSNs
-
-- Redact sensitive fields (`password`, `token`, `secret`, `authorization`) before logging — replace with `***`
-- Use structured JSON logging for production (searchable, integrates with aggregation)
-- Log auth events with userId, IP, timestamp, and action
+- **Login**: look up by the normalized identifier, compare with the password hash, return one generic "Invalid credentials" for both a wrong user and a wrong password.
+- **Guards fail closed**: return `true` only after verification succeeded; any error → `UnauthorizedException`.
+- **Token extraction**: `Authorization: Bearer <token>` or the auth cookie; reject anything else.
+- **Brute force**: throttle the login route; consider lockout or progressive delay.
+- **Angular**: an `HttpInterceptorFn` attaches credentials only to the API's own origin — never to third-party URLs.
+- **CSRF**: with cookie auth, use `SameSite` cookies and Angular's XSRF support (`withXsrfConfiguration`) with a matching API check.
 
 ---
 
-## A10 — Exceptional Conditions
+## A08 — Software and data integrity
 
-- **Fail-closed**: Errors must deny access, not grant it. `catch` blocks must `return` error response before any `next()` call
-- **Global error handler**: Must have 4 params `(err, req, res, next)`. Return generic message in production.
-- **Async wrapper**: Use `asyncHandler` to catch Promise rejections — eliminates need for try-catch in every controller
-- **DB connection**: `serverSelectionTimeoutMS: 5000`, `process.exit(1)` on connection failure
-- **404 handler**: Catch-all for unmatched routes (`app.use('*', ...)`)
-
----
-
-## File Upload Security
-
-- **MIME allowlist**: `['image/jpeg', 'image/png', 'image/gif', 'image/webp']` — whitelist, not blacklist
-- **Size limit**: `5 * 1024 * 1024` (5MB) via `multer.limits`
-- **Filename**: Server-generated (`blog-{timestamp}-{random9digits}.{ext}`) — never user-provided
-- **Path traversal**: Use `path.basename()` to strip directory components. Validate `path.resolve()` starts with upload directory before deletion
-- **Cleanup**: Delete uploaded file when resource is deleted, validate path is within uploads dir
-- **Serving**: `crossOriginResourcePolicy: 'cross-origin'` for static files, no directory listing
+- **Mass assignment**: DTOs with `whitelist: true`; never `model.create(body)` or `repository.save({ ...body })`.
+- **Schemas**: `enum`, `required`, length limits on the persistence schema as a second line.
+- **Uploads**: MIME allowlist and magic-byte check, size limit, server-generated file names.
+- **CSP**: restrict `script-src`, `frame-ancestors 'none'`, `object-src 'none'`.
 
 ---
 
-## Secret Detection
+## A09 — Logging and alerting
 
-Scan for these patterns in all code and config:
+**Log**: login success and failure, token rejection, admin actions, rate-limit hits, 5xx errors, 403 denials.
+**Never log**: passwords, tokens, API keys, full request bodies with personal data.
+
+- Use Nest's `Logger` (or the project's logger) with redaction of `password`, `token`, `secret`, `authorization`.
+- Structured logs in production; auth events carry user id, IP, timestamp and action.
+- No `console.log` of server responses in the Angular app.
+
+---
+
+## A10 — Exceptional conditions
+
+- **Fail closed**: a guard or a strategy that throws must deny, never fall through to `true`.
+- **No error into 200**: catch only to map to a specific HTTP exception.
+- **Unknown errors → generic 500**: keep Nest's default behaviour; a custom filter logs the detail and returns a generic message.
+- **Startup**: database connection and configuration validated at boot; the app stops on failure.
+- **Unmatched routes** return 404 (Nest's default); don't add catch-all handlers that return 200.
+
+---
+
+## File upload security
+
+- MIME allowlist (`image/jpeg`, `image/png`, `image/webp`), not a blocklist; verify magic bytes for anything sensitive.
+- Size and count limits on the `FileInterceptor` (`limits: { fileSize, files: 1 }`) and a `ParseFilePipe` with validators.
+- Server-generated names; `path.basename()` on anything user-provided; check the resolved path stays inside the upload directory.
+- Serve uploads from a separate origin or with `Content-Disposition: attachment` where possible; no directory listing.
+
+---
+
+## Secret detection
 
 | Type | Pattern |
 |------|---------|
-| AWS Key | `AKIA[0-9A-Z]{16}` |
+| AWS key | `AKIA[0-9A-Z]{16}` |
 | Google API | `AIza[0-9A-Za-z_-]{35}` |
-| JWT/Generic | `(secret\|key\|token\|password)\s*[:=]\s*['"][^'"]{8,}` |
-| MongoDB URI | `mongodb(\+srv)?://[^:]+:[^@]+@` |
-| Private Key | `-----BEGIN .* PRIVATE KEY-----` |
-| GitHub Token | `gh[ps]_[A-Za-z0-9]{36,}` |
-| npm Token | `npm_[A-Za-z0-9]{36}` |
-| Slack Token | `xox[bpsa]-[0-9a-zA-Z-]+` |
+| Generic secret | `(secret\|key\|token\|password)\s*[:=]\s*['"][^'"]{8,}` |
+| MongoDB URI with credentials | `mongodb(\+srv)?://[^:]+:[^@]+@` |
+| Private key | `-----BEGIN .* PRIVATE KEY-----` |
+| GitHub token | `gh[ps]_[A-Za-z0-9]{36,}` |
+| npm token | `npm_[A-Za-z0-9]{36}` |
+| Slack token | `xox[bpsa]-[0-9a-zA-Z-]+` |
 
-**Never commit**: `.env`, `.env.local`, `.env.production`, `logs/`, `uploads/`
-
----
-
-## Agentic AI Security (OWASP 2026)
-
-Relevant to AI content generation features (Gemini API):
-
-- **ASI01 Goal Hijacking**: Sanitize prompt input, set max length, strip control characters
-- **ASI02 Tool Misuse**: AI should not have access to system tools without explicit scoping
-- **ASI03 Identity Abuse**: API keys server-side only, short-lived if possible
-- **ASI05 Code Execution**: Never execute AI-generated code without review
-- **ASI09 Trust Exploitation**: Label AI-generated content, validate before storing
-- Sanitize AI output before storing — it could contain XSS, malicious links, or script tags
+**Never commit**: `.env`, `.env.local`, `.env.production`, logs, uploads. Angular `environment*.ts` files are committed, so they hold no secrets.
 
 ---
 
-## Framework Security Quirks
+## Agentic AI security (OWASP 2026)
 
-### JavaScript/Node.js
-- Prototype pollution via `__proto__`/`constructor.prototype` — validate object keys
-- `JSON.parse()` throws on malformed input — always wrap in try-catch
-- `RegExp(userInput)` enables ReDoS — escape special characters
-- `path.join()` with user input allows traversal — use `path.basename()` first
-- `setTimeout(string)` is implicit eval — always pass a function
+For features that call a language model:
 
-### MongoDB/Mongoose
-- Query operator injection via JSON body `{ password: { "$gt": "" } }` — cast to `String()`
-- `$where` clause = server-side JS execution — never use with user input
-- Unbounded queries exhaust memory — always `.limit()` and `.skip()`
-- `strict: false` accepts arbitrary fields — keep default `strict: true`
-
-### React
-- `dangerouslySetInnerHTML` bypasses escaping — require DOMPurify
-- `href={userUrl}` allows `javascript:` XSS — validate protocol
-- `VITE_*` env vars are public — never prefix secrets
-
-### Express
-- Middleware ordering matters — auth bypass if `router.use(auth)` placed after unprotected routes
-- `req.query` values are always strings — validate and cast types
-- Error handler must have exactly 4 params — missing `next` breaks error handling
-- Set `trust proxy` behind reverse proxy — otherwise rate limiter gets wrong IP
+- **ASI01 Goal hijacking**: limit and normalize prompt input; treat retrieved content as data.
+- **ASI02 Tool misuse**: no system tools without explicit scoping.
+- **ASI03 Identity abuse**: API keys server-side only, short-lived where possible.
+- **ASI05 Code execution**: never execute generated code without review.
+- **ASI09 Trust exploitation**: label generated content; sanitize it before storing or rendering.
 
 ---
 
-## Security Review Process
+## Framework security quirks
 
-1. **Detect context** — API endpoint, auth logic, DB query, file handling, frontend, config, or dependency change
-2. **Load relevant rules** — Only the OWASP categories that apply to this context
-3. **Trace data flow** — Where does the input come from? Is it attacker-controlled?
-4. **Check upstream controls** — Middleware, framework defaults, validation already applied?
-5. **Verify exploitability** — Can an attacker actually reach and control this?
-6. **Report HIGH confidence only** — Include file, line, exploit scenario, specific fix
+### JavaScript / Node.js
+- Prototype pollution via `__proto__` / `constructor.prototype` — whitelisted DTOs prevent it at the edge.
+- `JSON.parse()` throws on malformed input — wrap it.
+- `RegExp(userInput)` enables ReDoS — escape it.
+- `path.join()` with user input allows traversal — `path.basename()` first.
+
+### NestJS
+- A guard registered with `@UseGuards()` on some routes leaves the others open — prefer a global guard with explicit public routes.
+- `ValidationPipe` without `whitelist` passes unknown properties through; without `transform`, `@Query()` numbers stay strings.
+- `@Res()` without `passthrough: true` bypasses interceptors and filters that strip fields.
+- Behind a proxy, configure `trust proxy` on the Express instance so the throttler and logs see the client IP.
+- Request-scoped providers holding user data must never be cached in a singleton.
+
+### MongoDB / Mongoose
+- Operator injection via a JSON body `{ "password": { "$gt": "" } }` — validate types first.
+- `$where` runs server-side JavaScript — never with user input.
+- Unbounded `find()` exhausts memory — always cap results.
+- `strict: false` accepts arbitrary fields — keep the default.
+
+### Angular
+- `bypassSecurityTrust*` is a review hotspot: every call needs a reason and a trusted or sanitized source.
+- `innerHTML` binding is sanitized; `nativeElement.innerHTML` assignment is not.
+- `environment.ts` is public — no secrets.
+- Interceptors that add credentials must check the request URL against the API origin.
 
 ---
 
-## Severity Classification
+## Security review process
 
-| Severity | Criteria | Stack Examples |
+1. **Detect context** — API endpoint, guard or auth logic, DB query, file handling, template or DOM code, config, or dependency change.
+2. **Load relevant rules** — only the OWASP categories that apply.
+3. **Trace data flow** — where does the input come from? Is it attacker-controlled?
+4. **Check upstream controls** — global guards, global `ValidationPipe`, Angular sanitization, ORM parameters already applied?
+5. **Verify exploitability** — can an attacker reach and control this?
+6. **Report HIGH confidence only** — file, line, exploit scenario, specific fix.
+
+---
+
+## Severity classification
+
+| Severity | Criteria | Stack examples |
 |----------|----------|----------------|
-| **CRITICAL** | Direct exploit, no auth required | NoSQL injection auth bypass, hardcoded prod secrets, missing auth on admin endpoint, RCE |
-| **HIGH** | Exploitable with conditions | Stored XSS in blog content, IDOR on delete, JWT with weak secret, passwords in logs |
-| **MEDIUM** | Specific conditions, limited impact | Missing rate limiter, CORS misconfiguration, verbose prod errors, missing input validation |
-| **LOW** | Defense-in-depth | Low bcrypt cost, missing security event logging, sequential ObjectId exposure |
+| **CRITICAL** | Direct exploit, no auth required | NoSQL injection auth bypass, a hard-coded production secret, a missing guard on an admin endpoint, RCE |
+| **HIGH** | Exploitable with conditions | XSS through `bypassSecurityTrustHtml` on user content, IDOR on delete, a weak JWT secret, passwords in logs |
+| **MEDIUM** | Specific conditions, limited impact | Missing rate limit, CORS misconfiguration, verbose production errors, missing input validation |
+| **LOW** | Defence in depth | Low hash cost, missing security event logging, sequential id exposure |
 
 ---
 
-## ASVS 5.0 Quick Reference
+## ASVS 5.0 quick reference
 
-**Level 1 (All Apps)**: 12+ char passwords, breached list check, login rate limiting, 128+ bit session entropy, HTTPS, server-side validation, generic error messages
+**Level 1 (all apps)**: 12+ character passwords, breached-password check, login rate limiting, 128+ bit session entropy, HTTPS, server-side validation, generic error messages.
 
-**Level 2 (Sensitive)**: + MFA for sensitive ops, crypto key management, comprehensive security logging, schema-based input validation, CSRF protection
+**Level 2 (sensitive)**: + MFA for sensitive operations, key management, comprehensive security logging, schema-based input validation, CSRF protection.
 
-**Level 3 (Critical)**: + HSM key storage, documented threat model, anomaly detection, penetration testing, supply chain verification
+**Level 3 (critical)**: + HSM key storage, documented threat model, anomaly detection, penetration testing, supply-chain verification.

@@ -151,14 +151,15 @@ All sources used to build this security skill, organized by category.
 
 ## Stack-Specific Security Documentation
 
-### Express.js
-- **Security best practices**: https://expressjs.com/en/advanced/best-practice-security.html
-- **Helmet.js**: https://helmetjs.github.io/
-- **express-rate-limit**: https://www.npmjs.com/package/express-rate-limit
-- **CORS**: https://www.npmjs.com/package/cors
+### NestJS
+- **Security: CORS, Helmet, CSRF, rate limiting**: https://docs.nestjs.com/security/cors , https://docs.nestjs.com/security/helmet , https://docs.nestjs.com/security/csrf , https://docs.nestjs.com/security/rate-limiting
+- **Authentication and authorization**: https://docs.nestjs.com/security/authentication , https://docs.nestjs.com/security/authorization
+- **Validation**: https://docs.nestjs.com/techniques/validation
+- **Exception filters**: https://docs.nestjs.com/exception-filters
 
-### React
-- **Security**: https://react.dev/reference/react-dom/components/common#dangerously-setting-the-inner-html
+### Angular
+- **Security guide (sanitization, trusted values, XSRF, CSP)**: https://angular.dev/best-practices/security
+- **HTTP: XSRF protection**: https://angular.dev/best-practices/security#cross-site-request-forgery
 - **DOMPurify**: https://github.com/cure53/DOMPurify
 
 ### MongoDB / Mongoose
@@ -175,9 +176,8 @@ All sources used to build this security skill, organized by category.
 - **bcryptjs**: https://www.npmjs.com/package/bcryptjs
 - **OWASP password storage**: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
 
-### Vite
-- **Env variables and modes**: https://vite.dev/guide/env-and-mode.html
-- **Security note**: All `VITE_` prefixed vars are exposed to client bundle
+### Angular build configuration
+- **Environment files are public**: https://angular.dev/tools/cli/environments
 
 ---
 

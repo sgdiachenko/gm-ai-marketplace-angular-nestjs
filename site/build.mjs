@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Builds the catalog site from the repository into a static directory for GitHub Pages.
-// Usage: node site/build.mjs [--out _site] [--root <repo>] [--base /gm-ai-marketplace/] [--skip-inventory]
+// Usage: node site/build.mjs [--out _site] [--root <repo>] [--base /gm-ai-marketplace-angular-nestjs/] [--skip-inventory]
 //   --root            the repository to read; tests point it at a fixture
 //   --base            the absolute path the site is served from; only 404.html uses it
 //   --skip-inventory  skip the `claude plugin details` comparison (tests; CI never skips it)

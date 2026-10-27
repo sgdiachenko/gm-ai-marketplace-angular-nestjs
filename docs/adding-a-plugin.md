@@ -70,7 +70,7 @@ Claude Code finds these locations without any manifest field. Component folders 
 
 **Secrets.** Never commit credentials. Ask users for them through `userConfig` with `"sensitive": true`, which stores the value in the system keychain.
 
-**Dependencies and namespaces.** Refer to another plugin's components by namespaced name: `engineering-paved-path:onion-architecture` for a skill, `research-tools:researcher` for an agent. In an agent's `skills:` list every entry is namespaced, its own plugin's skills included. Declare each plugin you name in `dependencies` with a range, and release dependencies before dependents (see `docs/releasing.md`). Bundled files a skill runs are called through `${CLAUDE_SKILL_DIR}`, never through `.claude/skills/`.
+**Dependencies and namespaces.** Refer to another plugin's components by namespaced name: `engineering-paved-path:nestjs-backend-architecture` for a skill, `research-tools:researcher` for an agent. In an agent's `skills:` list every entry is namespaced, its own plugin's skills included. Declare each plugin you name in `dependencies` with a range, and release dependencies before dependents (see `docs/releasing.md`). Bundled files a skill runs are called through `${CLAUDE_SKILL_DIR}`, never through `.claude/skills/`.
 
 **Where a shared skill goes.** A skill that more than one plugin uses, or that describes a stack practice, belongs in `engineering-paved-path`. A skill with a single consumer ships inside that consumer.
 

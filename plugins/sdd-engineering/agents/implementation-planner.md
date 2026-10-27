@@ -20,7 +20,7 @@ Project-specific inputs come from the project profile: `docs/sdd-profile.md`, or
 
 - **Read-only.** You have no Write / Edit / NotebookEdit / Agent. Don't try to work around that.
 - **Bash is for read-only commands only**: `git log`, `git show`, `git blame`, `git diff`, `git status`, `git grep`, `ls`, `rg`, `wc`, `cat`/`head`/`sed -n`. Forbidden: output redirection (`>`, `>>`, `tee`), creating/moving/deleting files, installs, running servers, tests or migrations, `docker`, and any git command that changes state.
-- **Skill tool for reading practice only.** Load a skill to apply its rules to your design (`Skill: engineering-paved-path:onion-architecture`). Never invoke a workflow skill such as `run-plan`.
+- **Skill tool for reading practice only.** Load a skill to apply its rules to your design (`Skill: engineering-paved-path:nestjs-backend-architecture`). Never invoke a workflow skill such as `run-plan`.
 - **No specifications.** No *Spec*, *Requirements* or *Acceptance criteria* section in your output, and no step whose `files` touch the specs directory. Requirements specs are `spec-creator`'s, written before you run. A step's `done-when` is an implementation check, not a spec.
 - **No web access.** A question that needs external evidence (library behaviour, a standard or RFC) goes into *Risks & open questions* as a question `for: researcher` (`research-tools:researcher`) — don't answer it from memory.
 - **No review.** You don't audit the architecture, security or API compatibility of existing code. You *plan within* those rules and list what the reviewers should look at (*Review handoff*).
@@ -79,9 +79,9 @@ Recommended: <multi-agent | single-agent> — because <size / coupling>.
 
 1. **Orient.** Read the project profile, the root `AGENTS.md` / `CLAUDE.md`, then the `AGENTS.md` **and** `INSIGHTS.md` of every module the task touches, then the docs they point to for the area. Note every INSIGHTS entry that changes the plan. If your prompt points to a research file (for example `<plans>/<feature>.context.md`) instead of pasting a researcher report, read that file first.
    If your prompt names a spec (`<specs>/<YYYY-MM-DD>-<slug>.md`), read it first: it is the task description. It must be `Status: approved` — if it is `draft`, return it as `SC1`. Its `AC`/`EC`/`NFR` IDs are the requirements you plan against. A requirement that is infeasible or conflicts with the code becomes an `SC#`, and its *Open questions* marked blocking are `SC#` too.
-2. **Locate.** Glob / Grep for the code involved and for existing functions, hooks, repositories, contracts and test helpers to reuse. Read the relevant ranges — don't plan from file names.
+2. **Locate.** Glob / Grep for the code involved and for existing functions, services, controllers, repositories, contracts and test helpers to reuse. Read the relevant ranges — don't plan from file names.
    Also find the **consumers** of everything the change alters: grep each changed interface, port, export or enum value across source **and test** files (test files are often outside the type check, so a stale fake only fails when the suite runs), and look for registries that must learn about a new entry — route and navigation tables, allow-lists, i18n namespaces, dependency-injection wiring. Put every such file in the owning step's `files:` and name the `T#` that covers it.
-3. **Map files to skills.** For every file you plan to create or modify, find the skills that govern it: the profile's *Skill lanes* first; without lanes, the `engineering-paved-path` skill that matches the file type (React components and hooks → `react-best-practices`, frontend placement → `frontend-architecture`, Next.js App Router → `next-best-practices`, Fastify → `fastify-best-practices`, backend layering → `onion-architecture`, React tests → `react-testing-library`, input handling, auth and secrets → `security`). Load each skill you rely on through the Skill tool, apply its rules to your design, and write the rules that bind each step into the plan as **Constraints** with their source. A step's `skills:` field names skills by their namespaced name.
+3. **Map files to skills.** For every file you plan to create or modify, find the skills that govern it: the profile's *Skill lanes* first; without lanes, the `engineering-paved-path` skill that matches the file type (Angular components, services, signals, routing, forms, HTTP and Angular tests → `angular-developer`, Angular file placement and where logic lives → `frontend-architecture`, NestJS controllers, providers, DTOs, pipes, guards, configuration and Nest tests → `nestjs-best-practices`, NestJS layering and module boundaries → `nestjs-backend-architecture`, input handling, auth and secrets → `security`). Load each skill you rely on through the Skill tool, apply its rules to your design, and write the rules that bind each step into the plan as **Constraints** with their source. A step's `skills:` field names skills by their namespaced name.
 4. **Check the constraints** the plan must respect, from the profile's *Architecture rules* and *Guardrails* and the project's `AGENTS.md`:
    - dependency direction and layering, with the project's mechanical check;
    - file placement and module boundaries;
@@ -90,7 +90,8 @@ Recommended: <multi-agent | single-agent> — because <size / coupling>.
    - naming conventions;
    - the package manager per module; lockfiles change only through it;
    - public API: when a route, DTO or response shape changes, say so in *Review handoff → API compatibility* and keep the change backward compatible unless the spec says otherwise;
-   - a step that measures or times a DOM node (sticky headers, portals, anything reading `ref.current` or layout across a conditional render): mark it in *Review handoff → Manual verification* — the verifier and reviewers are static and can't catch a ref or effect-timing bug that only shows up in a running browser.
+   - a step that measures or times a DOM node (sticky headers, overlays, anything reading a `viewChild()` element, `ElementRef` layout or `afterRenderEffect` across an `@if` / `@defer` block): mark it in *Review handoff → Manual verification* — the verifier and reviewers are static and can't catch a query or render-timing bug that only shows up in a running browser.
+   - a module whose profile has no test command, while the spec or the plan needs tests there: say so as a `Q#` in pass 1 (adding a test runner is an install, the user's call) and never invent the command.
 5. **Plan the checks.** For each module in scope take the commands from the profile's *Modules* — the same commands CI runs. Tests that need infrastructure the implementer doesn't have (a database container, a browser) are listed as *not run by implementer*.
 6. **Shape the steps for the chosen mode** (pass 2 only).
    - *Multi-agent*: group steps into work packages `W1..Wn`. Each package has `owns:` — the exact files and directories only it may edit; no path appears in two packages that can run at the same time. Shared contracts, database schema and ports go into the earliest package(s); the rest depend on them. Maximise the number of packages in each wave. A file every package needs (a DI container, an index, a messages file) goes to exactly one owner, and the others depend on it. A step that uses another step's output goes in a package of a **later** wave than the producer — never the same wave.
@@ -117,8 +118,9 @@ multi-agent | single-agent — <why>
 ## Work packages            (multi-agent only; omit for single-agent)
 | WP | Steps | owns | depends-on | wave |
 |---|---|---|---|---|
-| W1 — contracts | S1, S2 | `src/domain/order.ts` | — | 1 |
-| W2 — backend | S3, S4 | `src/modules/orders/**` | W1 | 2 |
+| W1 — contracts | S1, S2 | `server/src/orders/dto/**`, `client/src/app/features/orders/models/**` | — | 1 |
+| W2 — backend | S3, S4 | `server/src/orders/**` (except `dto/`) | W1 | 2 |
+| W3 — frontend | S5, S6 | `client/src/app/features/orders/**` (except `models/`) | W1 | 2 |
 - Overlap check: no path owned by two packages in the same wave.
 - Dependency check: every `depends-on` is in an earlier wave.
 

@@ -1,6 +1,6 @@
 # architecture-review — maintainer notes
 
-One agent, `architecture-reviewer`. Depends on `engineering-paved-path` `^1.0.0` (preloads `onion-architecture`, `frontend-architecture`, `engineering-insights`; loads `next-best-practices` on demand). `sdd-engineering` depends on it and runs it in `/run-plan`'s review phase. Spec: `specs/sdd-engineering.md`.
+One agent, `architecture-reviewer`. Depends on `engineering-paved-path` `^2.0.0` (preloads `nestjs-backend-architecture`, `frontend-architecture`, `engineering-insights`; loads `nestjs-best-practices` or `angular-developer` on demand, only for findings about framework wiring). `sdd-engineering` depends on it and runs it in `/run-plan`'s review phase. Spec: `specs/sdd-engineering.md`.
 
 ## Origin
 
@@ -10,15 +10,17 @@ One agent, `architecture-reviewer`. Depends on `engineering-paved-path` `^1.0.0`
 - **Checks** come from the profile, or from existing `arch` / `lint` / `depcruise` package scripts; dev-digest's `pnpm -C server arch:check`, `check-shared-sync.sh` and `gate.sh` are gone;
 - **Finding schema and severity rules inlined**, since dev-digest's `pr-self-review` (`report.md`, `severity.md`) isn't ported; the `skill` field became `source`;
 - the known-violation list moved from a dev-digest file to "the project's baseline";
-- the Skill tool is enabled so it can load `next-best-practices` and other skills by namespaced name.
+- the Skill tool is enabled so it can load other skills by namespaced name.
+
+In 2.0.0 (this copy) the backend default moved from the onion ring map to NestJS layers (controller, service, persistence, pure domain, modules); the findings format, verdict rule and delta mode are unchanged.
 
 ## Evals
 
-`evals/architecture-review/` holds the three dev-digest fixtures moved onto the reference layout. Run with `scripts/run-evals.sh architecture-review` before a release.
+`evals/architecture-review/` holds four cases on an Angular `client/` and a NestJS `server/`: a harmless rename, a Nest import in a pure rule plus a Mongoose model in a controller, filesystem and `process.env` access in a pure rule, and a `shared/` component importing a feature and calling `HttpClient`. Run with `scripts/run-evals.sh architecture-review` before a release; no run on these fixtures is recorded yet.
 
 ## Context cost
 
-`claude plugin details architecture-review` on Claude Code 2.1.299: ~140 tokens always-on, ~2.6k on invoke (plus the three preloaded skills, ~9k).
+Measured in `gm-ai-marketplace` on Claude Code 2.1.299, before the stack change: ~140 tokens always-on, ~2.6k on invoke (plus the three preloaded skills). Not re-measured for 2.0.0.
 
 ## Compatibility
 

@@ -1,12 +1,12 @@
 # Catalog site
 
-The static site at https://sgdiachenko.github.io/gm-ai-marketplace/: search over every plugin, skill, agent, command, hook and MCP server in the marketplace, with install commands. It is built from this repository; nothing on it is written by hand. Spec: `specs/catalog-site.md`. Design: the claude.ai/design project "Catalog Site".
+The static site for https://sgdiachenko.github.io/gm-ai-marketplace-angular-nestjs/ (not deployed while the repository is private and the `PAGES_ENABLED` variable is unset): search over every plugin, skill, agent, command, hook and MCP server in the marketplace, with install commands. It is built from this repository; nothing on it is written by hand. Spec: `specs/catalog-site.md`. Design: the claude.ai/design project "Catalog Site".
 
 Everything the site needs lives in this directory, apart from the GitHub files that must sit elsewhere: `.github/workflows/site.yml` and `.github/ISSUE_TEMPLATE/`. Nothing here ships to plugin users, and changing it never needs a plugin version bump.
 
 ## Commands
 
-- **Develop:** `node site/dev.mjs` serves http://localhost:4000/gm-ai-marketplace/ the way GitHub Pages does, rebuilds when `site/`, `plugins/`, `.claude-plugin/` or `docs/` change, and reloads the browser. A failed build shows in the terminal and on the page, over the last good build. `--port` changes the port, `--inventory` adds the `claude plugin details` check to every rebuild, `--root site/tests/fixture` previews the test fixture instead of the real plugins.
+- **Develop:** `node site/dev.mjs` serves http://localhost:4000/gm-ai-marketplace-angular-nestjs/ the way GitHub Pages does, rebuilds when `site/`, `plugins/`, `.claude-plugin/` or `docs/` change, and reloads the browser. A failed build shows in the terminal and on the page, over the last good build. `--port` changes the port, `--inventory` adds the `claude plugin details` check to every rebuild, `--root site/tests/fixture` previews the test fixture instead of the real plugins.
 - **Build:** `node site/build.mjs` writes `_site/` (gitignored). `--out <dir>` picks another directory, `--root <dir>` reads another repository, `--base <path>` changes the absolute path 404.html uses.
 - **Test:** `node --test site/tests/*.test.mjs`.
 
@@ -19,11 +19,11 @@ On GitHub Actions, in `.github/workflows/site.yml`, apart from the marketplace c
 | Job | Runs on | Does |
 |---|---|---|
 | Build and test the site | every pull request and every push to `main` | runs the tests, builds the site from the checked-out commit with Claude Code installed for the inventory check, and writes a summary |
-| Deploy to GitHub Pages | pushes to `main` and manual runs from `main` | publishes the build from the job above |
+| Deploy to GitHub Pages | pushes to `main` and manual runs from `main`, when the repository variable `PAGES_ENABLED` is `true` | publishes the build from the job above |
 
 The build output is never committed: there is no `gh-pages` branch. GitHub keeps each deploy as an artifact.
 
-To roll the site back, run the Site workflow by hand from `main` with `ref` set to the last good commit. One-time setup: Settings → Pages → Source: GitHub Actions.
+To roll the site back, run the Site workflow by hand from `main` with `ref` set to the last good commit. One-time setup: Settings → Pages → Source: GitHub Actions, then the repository variable `PAGES_ENABLED=true`. Pages for a private repository needs a paid GitHub plan.
 
 ## How content gets in
 
@@ -75,7 +75,7 @@ site/
 
 ## How it fits GitHub Pages
 
-- Pages link to each other with relative paths, so the site works at `/gm-ai-marketplace/`, at a fork's path and in the dev server. Only `404.html`, which GitHub serves at any depth, uses the absolute base path.
+- Pages link to each other with relative paths, so the site works at `/gm-ai-marketplace-angular-nestjs/`, at a fork's path and in the dev server. Only `404.html`, which GitHub serves at any depth, uses the absolute base path.
 - The build fails when a relative link, image or icon points at a file that isn't in the output.
 - A CSP meta tag allows only the site's own origin: fonts and icons are vendored, README images are copied into the site, and there are no inline scripts or `style` attributes.
 

@@ -6,6 +6,7 @@
 | Date | 2026-10-14 |
 | Source | `sgdiachenko/dev-digest` at `1b694bc41a61` (`.claude/agents/`, `.claude/skills/`, `evals/`) |
 | Plugins | `sdd-engineering`, `engineering-paved-path`, `research-tools`, `architecture-review` |
+| In this repository | Released as 2.0.0 for Angular + NestJS in `gm-ai-marketplace-angular-nestjs` (2026-10-27). The workflow below is unchanged; the stack skills changed. Tables and rules name the 2.0.0 skills; *Provenance* keeps the 1.x history. |
 
 ## Summary
 
@@ -39,10 +40,10 @@ Package the team's Spec-Driven Development (SDD) workflow as four plugins. `sdd-
 
 | Plugin | Version | Components | Depends on |
 |---|---|---|---|
-| `engineering-paved-path` | 1.0.0 | skills: `react-best-practices`, `next-best-practices`, `fastify-best-practices`, `frontend-architecture`, `onion-architecture`, `react-testing-library`, `security`, `engineering-insights` | none |
+| `engineering-paved-path` | 2.0.0 | skills: `angular-developer`, `nestjs-best-practices`, `frontend-architecture`, `nestjs-backend-architecture`, `security`, `engineering-insights` | none |
 | `research-tools` | 1.0.0 | agent: `researcher` | none |
-| `architecture-review` | 1.0.0 | agent: `architecture-reviewer` | `engineering-paved-path ^1.0.0` |
-| `sdd-engineering` | 1.0.0 | agents: `spec-creator`, `implementation-planner`, `implementer`, `plan-verifier`; skills: `run-plan`, `workflow-retro`, `ears-requirements`, `ux-design-review`, `mermaid-diagram` | `engineering-paved-path ^1.0.0`, `research-tools ^1.0.0`, `architecture-review ^1.0.0` |
+| `architecture-review` | 2.0.0 | agent: `architecture-reviewer` | `engineering-paved-path ^2.0.0` |
+| `sdd-engineering` | 1.0.0 | agents: `spec-creator`, `implementation-planner`, `implementer`, `plan-verifier`; skills: `run-plan`, `workflow-retro`, `ears-requirements`, `ux-design-review`, `mermaid-diagram` | `engineering-paved-path ^2.0.0`, `research-tools ^1.0.0`, `architecture-review ^2.0.0` |
 
 ```mermaid
 flowchart TD
@@ -51,9 +52,9 @@ flowchart TD
   ar["architecture-review<br/>agent: architecture-reviewer"]
   epp["engineering-paved-path<br/>8 skills"]
   sdd -->|^1.0.0| rt
-  sdd -->|^1.0.0| ar
-  sdd -->|^1.0.0| epp
-  ar -->|^1.0.0| epp
+  sdd -->|^2.0.0| ar
+  sdd -->|^2.0.0| epp
+  ar -->|^2.0.0| epp
 ```
 
 - All four start at `1.0.0`, an exception to the `0.1.0` start in `docs/adding-a-plugin.md`: they are ports of a workflow in daily use, and `^1.0.0` must match.
@@ -72,21 +73,21 @@ flowchart TD
 | `sdd-engineering:plan-verifier` | `sdd-engineering:ears-requirements`, `paved:engineering-insights` | the skill each plan constraint cites as its `source:` |
 | `/sdd-engineering:run-plan` | — | `sdd-engineering:implementer`, `sdd-engineering:plan-verifier`, `architecture-review:architecture-reviewer`, built-in `/code-review` and `/security-review` |
 | `/sdd-engineering:workflow-retro` | — | `sdd-engineering:mermaid-diagram`, `paved:engineering-insights`, its own `assets/collect.mjs` |
-| `architecture-review:architecture-reviewer` | `paved:onion-architecture`, `paved:frontend-architecture`, `paved:engineering-insights` | `paved:next-best-practices` |
+| `architecture-review:architecture-reviewer` | `paved:nestjs-backend-architecture`, `paved:frontend-architecture`, `paved:engineering-insights` | `paved:nestjs-best-practices`, `paved:angular-developer` |
 | `research-tools:researcher` | — | — |
 
 ### Where a skill goes
 
 - A skill used by more than one plugin, or describing a stack practice, goes to `engineering-paved-path`.
 - A skill with a single consumer ships inside that consumer.
-- Result: `engineering-insights` (5 consumers in 2 plugins) and the architecture, Next.js and security skills (used by both `architecture-review` and `sdd-engineering`) go to the paved path; `ears-requirements`, `ux-design-review` and `mermaid-diagram` stay in `sdd-engineering`.
+- Result: `engineering-insights` (5 consumers in 2 plugins) and the architecture, framework (Next.js in 1.x, Angular and NestJS in 2.0.0) and security skills (used by both `architecture-review` and `sdd-engineering`) go to the paved path; `ears-requirements`, `ux-design-review` and `mermaid-diagram` stay in `sdd-engineering`.
 
 ## Packaging rules
 
 Every ported agent, skill and supporting file follows these rules.
 
 1. **No project-bound content.** No DevDigest name or URL; no `server/`, `client/`, `reviewer-core/`, `mcp-server/`, `e2e/`; no `pnpm -C …`, `gate.sh`, `routing.md`, `~/.devdigest`; no dev-digest file names, rule names, dates or "user decision" notes. Values a project must supply come from the project profile; examples use neutral paths such as `src/domain/` or `apps/web/`.
-2. **Skills by namespace.** Agent `skills:` lists use namespaced names (`engineering-paved-path:onion-architecture`). On-demand skills load through the Skill tool by the same name, which replaces reading `.claude/skills/<name>/SKILL.md`. Agents that load skills on demand therefore have `Skill` in `tools`.
+2. **Skills by namespace.** Agent `skills:` lists use namespaced names (`engineering-paved-path:nestjs-backend-architecture`). On-demand skills load through the Skill tool by the same name, which replaces reading `.claude/skills/<name>/SKILL.md`. Agents that load skills on demand therefore have `Skill` in `tools`.
 3. **Agents by namespace.** `research-tools:researcher`, `architecture-review:architecture-reviewer`, `sdd-engineering:implementer`.
 4. **Bundled files through `${CLAUDE_SKILL_DIR}`.** Scripts a skill runs are called as `node "${CLAUDE_SKILL_DIR}/assets/collect.mjs"`, never through `.claude/skills/`.
 5. **User state in `${CLAUDE_PLUGIN_DATA}`.** The retro's rate card is read from `${CLAUDE_PLUGIN_DATA}/prices.json` first, then from the bundled, empty `assets/prices.json`.
@@ -104,7 +105,7 @@ The explicit inputs that replace dev-digest paths. A Markdown file in the user's
 | Language | docs language, EARS keywords | English; `WHEN` / `WHILE` / `IF … THEN` / `WHERE` |
 | Modules | name, path, full check commands, targeted test command | none: agents ask instead of guessing |
 | Skill lanes | file glob → namespaced skills | none: agents use the paved-path skills that match the file type |
-| Architecture rules | rule sources (skills, config files, ADRs), mechanical check commands | `engineering-paved-path:onion-architecture` and `:frontend-architecture` |
+| Architecture rules | rule sources (skills, config files, ADRs), mechanical check commands | `engineering-paved-path:nestjs-backend-architecture` and `:frontend-architecture` |
 | Guardrails | extra forbidden commands, do-not-touch paths | the built-in list: commits, push, PRs, installs, migrations, destructive container commands |
 | Live checks | whether manual verification may call paid or credentialed services | no |
 
@@ -190,8 +191,8 @@ The main session orchestrates: subagents can't ask the user questions, so each r
 
 The repository is public.
 
-- `fastify-best-practices` is Matteo Collina's MIT-licensed skill (`mcollina/skills` at `72b7275`), with only the description shortened. The dev-digest copy was older, so the plugin ships the upstream version. Its folder carries `LICENSE` and a `NOTICE.md`.
-- `next-best-practices` came from `vercel-labs/next-skills`, which publishes no license and has withdrawn the skill. The paved path ships a new, shorter skill under the same name, written for this marketplace, that defers to the Next.js docs bundled with the installed version.
+- (1.x, removed in 2.0.0) `fastify-best-practices` is Matteo Collina's MIT-licensed skill (`mcollina/skills` at `72b7275`), with only the description shortened. The dev-digest copy was older, so the plugin ships the upstream version. Its folder carries `LICENSE` and a `NOTICE.md`.
+- (1.x, removed in 2.0.0) `next-best-practices` came from `vercel-labs/next-skills`, which publishes no license and has withdrawn the skill. The paved path ships a new, shorter skill under the same name, written for this marketplace, that defers to the Next.js docs bundled with the installed version.
 - The other skills and the agents come from the author's own `dev-digest`.
 - `docs/plugins/engineering-paved-path.md` records the origin of each skill.
 
@@ -208,4 +209,4 @@ The repository is public.
 - Whether an agent's `skills:` list preloads a namespaced skill from a dependency plugin is not documented. If it doesn't, agents load those skills through the Skill tool instead.
 - Resolved: `claude plugin eval` runs cases outside a plugin directory when the target is a directory that contains both the cases and the plugins (the repository root). A case file as the target fails: its `plugins:` entries resolve outside the case directory, the containment root.
 - `claude plugin eval` may be in early access for some accounts.
-- `react-best-practices`, `react-testing-library`, `security` and `mermaid-diagram` have no public upstream that a code search on 2026-10-14 could find. They are treated as the author's own.
+- (1.x) `react-best-practices`, `react-testing-library`, `security` and `mermaid-diagram` have no public upstream that a code search on 2026-10-14 could find. They are treated as the author's own.
