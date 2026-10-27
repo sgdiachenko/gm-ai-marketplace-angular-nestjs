@@ -20,6 +20,8 @@ Then add `export CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` to your shell profile. For a
 
 SSH works too, when your key is loaded in `ssh-agent` and belongs to an account with access to the repository.
 
+`gh auth setup-git` is not optional, even when adding the marketplace already works. On macOS, the `osxkeychain` helper that Apple's Command Line Tools set in the *system* git config was enough to clone the catalog, but installing a plugin whose dependencies resolve to a `<plugin>--v<version>` tag failed with `Failed to checkout commit <sha>: … could not read Username for 'https://github.com': terminal prompts disabled`. With the helper `gh auth setup-git` writes to your global git config (`credential.https://github.com.helper`), the same install succeeded (Claude Code 2.1.311, 2026-10-27).
+
 **Auto-update** checks the private repository in the background without prompting. It works when your credential helper answers on its own (after `gh auth setup-git`, or a key in `ssh-agent`). A `GITHUB_TOKEN` in the environment alone doesn't authenticate the check. If the check can't authenticate, Claude Code re-clones and keeps the old checkout when that fails too; set `CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE=1` to skip the re-clone attempt.
 
 ## Install
