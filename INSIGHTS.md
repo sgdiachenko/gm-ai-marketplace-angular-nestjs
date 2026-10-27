@@ -112,3 +112,18 @@ Entry template:
 - **Context:** rehearsing the return from latest to the stable channel in `vocabulary-nextjs`, at project scope.
 - **Insight:** `claude plugin disable` refuses a plugin that another enabled plugin requires, so dependents go first and dependencies last, and enabling goes the other way. Both channels' copies can stay installed; with one set disabled, the session loads only the other (the `plugin_loaded` events show `marketplace.name`). Uninstalling instead of disabling would delete `~/.claude/plugins/data/<plugin>-<marketplace>/`. `claude plugin prune --scope project` after uninstalling the stable copy removed only the stable dependencies; the latest ones stayed because an enabled plugin still needed them.
 - **Action:** `docs/releasing.md` (*Move a project to stable, and back*) lists the commands in that order.
+
+## 2026-10-27 — A cloned marketplace carries the source's release tags
+- **Context:** creating `gm-ai-marketplace-angular-nestjs` as an independent copy of `gm-ai-marketplace`.
+- **Insight:** `git clone` of `main` fetches the `<plugin>--v<version>` tags reachable from it. Pushed to the new repository, they would make dependency ranges such as `^1.0.0` resolve to the source's commits — the React-era plugins — whenever a range still matched them. The catalog name decides the install id (`<plugin>@<catalog>`), the cache path and `${CLAUDE_PLUGIN_DATA}`, so renaming the catalog is what lets both marketplaces be installed side by side.
+- **Action:** local tags were deleted before the first push, versions of changed plugins went to new majors, and `tag-releases.yml` created this repository's own tags. The source remote is fetch-only (`upstream`, push URL disabled).
+
+## 2026-10-27 — The official Angular skill has no marketplace and no license file
+- **Context:** replacing the React and Next.js skills with the Angular team's `angular-developer`.
+- **Insight:** `angular/skills` is a build output of `skills/dev-skills/` in `angular/angular`; its own installer is `npx skills add`, which writes into a project's skills folder, so agents can't preload it by a namespaced name or declare it as a dependency. The repository has no `LICENSE`; `SKILL.md` says `license: MIT`, and `angular/angular` is MIT.
+- **Action:** the skill is vendored unchanged into `engineering-paved-path` with the `angular/angular` MIT license and a `NOTICE.md` that pins the upstream commit; `docs/plugins/engineering-paved-path.md` has the update procedure.
+
+## 2026-10-27 — A private marketplace and an SSH key of another account
+- **Context:** the first install of this private repository through `scripts/try-install.sh`, Claude Code 2.1.311.
+- **Insight:** for an `owner/repo` source, Claude Code probes `ssh -T git@github.com`; the probe succeeded with a key of a GitHub account that has no access to this repository, so the SSH clone failed and the CLI fell back to HTTPS, where the keychain credential worked. Installs from `/plugin` in a session and plugin updates don't fall back. A throwaway `CLAUDE_CONFIG_DIR` profile installs plugins but has no login, so agent checks need the normal profile with `--plugin-dir` pointing at the cached copies.
+- **Action:** `docs/installing.md` asks users to run `gh auth setup-git` and set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1`; the release check loads the cache copies with `--plugin-dir` in a logged-in session.

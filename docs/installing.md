@@ -110,6 +110,70 @@ To write the file by hand instead, list the marketplace and the plugins in `.cla
 - To opt out on your machine, set the plugin to `false` in `.claude/settings.local.json`.
 - Cloud sessions don't add marketplaces listed in a repository's settings.
 
+## Switch a project from gm-ai-marketplace
+
+This catalog has the same plugin names as `gm-ai-marketplace`, but a different catalog name, so both can be installed side by side: `sdd-engineering@gm-ai-marketplace` and `sdd-engineering@gm-ai-marketplace-angular-nestjs` are separate installs. Two enabled copies of one plugin load the same namespaced skill and agent names (`engineering-paved-path:security`, `sdd-engineering:implementer`), so a project enables **one** set.
+
+To use this copy in one Angular + NestJS project, for yourself only, run these in a terminal from the project's root. Everything goes to `.claude/settings.local.json` (local scope); your user settings and the project's committed `.claude/settings.json` don't change, and every other project keeps what it had.
+
+1. Turn the originals off in this project, dependents first (`claude plugin disable` refuses a plugin that an enabled plugin still requires). Disable, don't uninstall: uninstalling removes them from your other projects too.
+
+   ```bash
+   for p in sdd-engineering architecture-review research-tools engineering-paved-path; do
+     claude plugin disable "$p@gm-ai-marketplace" --scope local
+   done
+   ```
+
+   A plugin that isn't enabled here prints `already disabled at local scope` and nothing changes; that's fine.
+
+2. Register this marketplace for the project:
+
+   ```bash
+   claude plugin marketplace add sgdiachenko/gm-ai-marketplace-angular-nestjs --scope local
+   ```
+
+3. Install `sdd-engineering`; its three dependencies come with it:
+
+   ```bash
+   claude plugin install sdd-engineering@gm-ai-marketplace-angular-nestjs --scope local
+   ```
+
+4. Check: in the project, the four `@gm-ai-marketplace` plugins are `disabled` and the four `@gm-ai-marketplace-angular-nestjs` plugins `enabled`; in any other directory, nothing changed.
+
+   ```bash
+   claude plugin list
+   ```
+
+   In an open session, run `/reload-plugins`. To see which copy a session really loads, run `node scripts/trace-plugin-version.mjs <project-dir>` from this repository.
+
+The resulting `.claude/settings.local.json`:
+
+```json
+{
+  "enabledPlugins": {
+    "sdd-engineering@gm-ai-marketplace": false,
+    "architecture-review@gm-ai-marketplace": false,
+    "research-tools@gm-ai-marketplace": false,
+    "engineering-paved-path@gm-ai-marketplace": false,
+    "sdd-engineering@gm-ai-marketplace-angular-nestjs": true,
+    "engineering-paved-path@gm-ai-marketplace-angular-nestjs": true,
+    "research-tools@gm-ai-marketplace-angular-nestjs": true,
+    "architecture-review@gm-ai-marketplace-angular-nestjs": true
+  },
+  "extraKnownMarketplaces": {
+    "gm-ai-marketplace-angular-nestjs": {
+      "source": { "source": "github", "repo": "sgdiachenko/gm-ai-marketplace-angular-nestjs" }
+    }
+  }
+}
+```
+
+Local settings override user and project settings, so the `false` entries also win over originals a teammate enabled in the committed `.claude/settings.json`. Keep `.claude/settings.local.json` out of git: Claude Code's convention is to ignore it, but check that your `.gitignore` or global git ignore covers it.
+
+To go back, reverse the order: disable the copies (`sdd-engineering`, `architecture-review`, `research-tools`, `engineering-paved-path` `@gm-ai-marketplace-angular-nestjs`, `--scope local`), then enable the originals (`engineering-paved-path`, `research-tools`, `architecture-review`, `sdd-engineering` `@gm-ai-marketplace`, `--scope local`), or delete those entries from `.claude/settings.local.json`.
+
+For the whole team instead, use `--scope project` in steps 1–3 and commit `.claude/settings.json`; every teammate then needs access to this private repository.
+
 ## Updates
 
 Auto-update is off for this marketplace by default. To turn it on: `/plugin` → **Marketplaces** → `gm-ai-marketplace-angular-nestjs` → **Enable auto-update**. Claude Code then checks after your first message in a session and asks you to run `/reload-plugins`. A project can keep it off for itself with `"autoUpdate": false` on the marketplace's entry in its `.claude/settings.json`.

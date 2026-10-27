@@ -20,7 +20,7 @@ In 2.0.0 (this copy) the backend default moved from the onion ring map to NestJS
 
 ## Context cost
 
-Measured in `gm-ai-marketplace` on Claude Code 2.1.299, before the stack change: ~140 tokens always-on, ~2.6k on invoke (plus the three preloaded skills). Not re-measured for 2.0.0.
+`claude plugin details architecture-review` on Claude Code 2.1.311 (2.0.0, installed through the plugin cache): ~108 tokens always-on, ~1.8k on invoke, plus the three preloaded skills (~3.7k).
 
 ## Compatibility
 

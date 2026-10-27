@@ -15,7 +15,7 @@ First release in `gm-ai-marketplace-angular-nestjs`, the Angular + NestJS copy o
 ### Changed
 
 - `frontend-architecture`: rewritten for Angular, generalized from a project's harness skill: feature folders and `shared/`, the `app → features → shared` direction, where each kind of file goes, component splitting, where business logic lives, mapping onto MVP / MVVM controllers. No product names, paths, Nx commands, glossary or required state library.
-- `security`: examples, checklists and stack notes for Angular and NestJS (guards, `ValidationPipe`, Angular sanitization and `bypassSecurityTrust*`, interceptors, throttling) instead of React and Express.
+- `security`: examples, checklists and stack notes for Angular and NestJS (guards, `ValidationPipe`, Angular sanitization and `bypassSecurityTrust*`, interceptors, throttling) instead of React and Express. The OWASP JWT cheat sheet link points to its current URL.
 
 ### Removed
 

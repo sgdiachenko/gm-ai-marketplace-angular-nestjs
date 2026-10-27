@@ -5,7 +5,7 @@
 | Version | Status |
 |---|---|
 | 2.1.275 or later | supported: the one-step `claude plugin install sdd-engineering --marketplace sgdiachenko/gm-ai-marketplace-angular-nestjs` needs it |
-| 2.1.296, 2.1.299 | tested: CI validates the catalog on 2.1.296; the evals and the install in another project ran on 2.1.299 |
+| 2.1.296, 2.1.311 | tested for 2.0.0: CI validates the catalog on 2.1.296; `claude plugin validate --strict`, the install through the plugin cache from the private repository with its three dependencies, and a check that the agents load their skills by namespaced name ran on 2.1.311. The eval suites have not been run on 2.0.0 |
 
 The plugin relies on these platform features:
 

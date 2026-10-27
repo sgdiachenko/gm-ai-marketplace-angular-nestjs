@@ -35,9 +35,14 @@ Then update the commit and date in the skill's `NOTICE.md` and in the table abov
 
 ## Context cost
 
-Not measured on this copy yet. Measure with `claude plugin details engineering-paved-path` and record it here: always-on cost (descriptions of six skills) and the largest on-invoke body (`angular-developer` links 43 reference files and loads only the ones a task needs).
+Measured with `claude plugin details engineering-paved-path` on the copy installed through the plugin cache, Claude Code 2.1.311:
+
+- always-on: ~672 tokens per session for six skill descriptions (~90–130 each);
+- on-invoke: `engineering-insights` ~0.5k, `nestjs-backend-architecture` ~1.5k, `frontend-architecture` ~1.7k, `angular-developer` ~2.7k (its `SKILL.md` only; it reads one of 43 reference files when a task needs it), `nestjs-best-practices` ~2.7k, `security` ~3.6k.
+
+With its dependents, installing `sdd-engineering` adds ~1,660 tokens to every session (sdd-engineering ~798, engineering-paved-path ~672, architecture-review ~108, research-tools ~84).
 
 ## Planned
 
 - An Angular testing skill beyond `angular-developer`'s testing references, if implementers keep testing views instead of controllers or presenters.
-- Measured context cost and an `architecture-review` eval run on the new fixtures.
+- An `architecture-review` eval run on the new fixtures, and a new cost baseline for `cost-workflow`.
