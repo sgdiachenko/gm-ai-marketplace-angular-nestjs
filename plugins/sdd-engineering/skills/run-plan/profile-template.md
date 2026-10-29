@@ -24,6 +24,13 @@ noted in it; a missing check command is never guessed — the agents ask instead
 
 <!-- To write specs in another language, set the docs language and list the four keywords translated into it, in the same order. -->
 
+## Stack versions
+
+<!-- Optional. The versions agents should use instead of reading node_modules/*/package.json or lockfiles,
+which several agents otherwise rediscover one by one. Keep it in step with the root package.json. -->
+
+- Node.js 24 · TypeScript ~6.0 · Angular 22 · NestJS 12
+
 ## Modules
 
 | Module | Path | Package manager | Full checks (what CI runs) | Targeted tests |

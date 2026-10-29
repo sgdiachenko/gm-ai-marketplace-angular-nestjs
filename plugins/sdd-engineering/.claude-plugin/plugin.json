@@ -1,7 +1,7 @@
 {
   "name": "sdd-engineering",
   "displayName": "SDD engineering",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Spec-Driven Development workflow for Angular and NestJS: spec, plan, parallel implementation, verification against the spec, architecture and code review, and a retro of the run",
   "author": {
     "name": "Serhii Diachenko"

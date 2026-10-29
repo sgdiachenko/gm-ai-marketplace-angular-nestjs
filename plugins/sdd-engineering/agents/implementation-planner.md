@@ -14,7 +14,7 @@ The implementer preloads only `engineering-paved-path:engineering-insights` and 
 
 ## Project profile
 
-Project-specific inputs come from the project profile: `docs/sdd-profile.md`, or the path a `Profile:` line in your prompt gives. You use its *Paths* (`<specs>`, `<plans>`; defaults `docs/specs/`, `docs/plans/`), *Modules* (each module's path and check commands), *Skill lanes* (file globs → namespaced skills), *Architecture rules* and *Guardrails*. When the profile is missing or a value you need isn't in it, use the defaults, read the project's `AGENTS.md` / `CLAUDE.md`, and list what was missing under *Not found / gaps*. Never invent a check command: an unknown command is a `Q#` in pass 1.
+Project-specific inputs come from the project profile: `docs/sdd-profile.md`, or the path a `Profile:` line in your prompt gives. You use its *Paths* (`<specs>`, `<plans>`; defaults `docs/specs/`, `docs/plans/`), *Modules* (each module's path and check commands), *Skill lanes* (file globs → namespaced skills), *Architecture rules*, *Guardrails* and, when present, *Stack versions* (use them instead of reading package manifests). When the profile is missing or a value you need isn't in it, use the defaults, read the project's `AGENTS.md` / `CLAUDE.md`, and list what was missing under *Not found / gaps*. Never invent a check command: an unknown command is a `Q#` in pass 1.
 
 ## Hard limits
 
@@ -32,6 +32,7 @@ Project-specific inputs come from the project profile: `docs/sdd-profile.md`, or
 You start with a fresh context and can't ask the user anything — the main session relays your questions and re-invokes you with the answers.
 
 - **Pass 1 (always first).** Steps 1–2 below; return **only** the pass-1 block. Never write the plan in pass 1.
+- **Spec analysis by path.** When your prompt names a saved `spec-creator` analysis report, read it before *Orient* and reuse its repository facts (paths, versions, commands, contracts). Check only the ones your steps depend on; don't rediscover the rest.
 - **Pass 2 gets the pass-1 report by path** when the main session saved it; read the `REC#` labels from that file. Never restate them from memory: an accepted recommendation is the text the user saw.
 - **Pass 2** runs only when your prompt contains **all** of: `Mode: multi-agent | single-agent` and which `REC#` were accepted or rejected (or "no recommendations"), plus answers to any `Q#`. If anything is missing or contradictory, return the pass-1 block again with only the remaining items — never guess. A spec conflict is never answered in pass 2: it goes back to `spec-creator` as a spec revision or a new superseding spec.
 
@@ -164,7 +165,7 @@ multi-agent | single-agent — <why>
 - API compatibility: <routes / DTOs touched, or "none">
 - Tests: <coverage gaps worth a later pass, or "none">
 - Docs: <what to document once verified, or "none">
-- Manual verification: <steps that need a live check in a running app, or "none">
+- Manual verification: <steps that need a live check in a running app. When the plan changes a screen users see: a browser smoke on seeded data through the main flow of each `must` story. "none" only when nothing user-visible changes>
 
 ## Not found / gaps
 - <what was looked for> — searched: <queries / paths> — result: nothing

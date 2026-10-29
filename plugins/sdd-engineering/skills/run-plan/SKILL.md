@@ -94,7 +94,7 @@ Reports go to `<plans>/<slug>.reports.md` (appended, one `##` per report).
 **Triage** — show the ledger, then:
 
 - `CRITICAL` / `WARNING` → `fixed`, or `waived by user: <reason>`. Never silently dropped.
-- `SUGGESTION` → one multi-select question: which to apply.
+- `SUGGESTION` → one multi-select question: which to apply, each with a one-line user-visible impact. A rule the user set up front (for example "fix only CRITICAL/WARNING") skips the question but not the list: show the suggestions and their impact in the round summary. A suggestion whose impact is wrong or missing data in a `must` flow is a `WARNING`, whatever the reviewer labelled it.
 - A finding whose evidence doesn't hold, that is pre-existing code, or that contradicts the approved plan or spec → `disputed` with the reason; the user decides.
 - A finding meaning the **plan or spec** is wrong → not a code fix; stop and hand it to the user.
 
@@ -112,14 +112,15 @@ Reports go to `<plans>/<slug>.reports.md` (appended, one `##` per report).
 
 The plan's *Review handoff → Manual verification* isn't "none" → run the app (the profile's run command, the `run` skill, or a browser tool) and check the listed behaviour live. A regression → a new `F#` (source: manual) → Phase 3 fix step.
 
-Browser automation tips: prefer one-shot page probes and separate wait steps over long polling loops inside one call; take a screenshot only after the page settles, since one taken right after navigation can show a stale frame; if a browser tool fails 3 times, stop and record what couldn't be verified instead of retrying.
+Browser automation tips: prefer one-shot page probes and separate wait steps over long polling loops inside one call; take a screenshot only after the page settles, since one taken right after navigation can show a stale frame; if a browser tool fails 3 times, stop and record what couldn't be verified instead of retrying. Sign in from a separate browser profile or a private window, or sign out afterwards: cookies are per host, not per port, so signing in to the app on one `localhost` port replaces the user's own session on every other port.
 
 ## Phase 5 — Close the spec
 
 When a spec drives the run and verification passed:
 
 1. In the spec, change `Status: approved` to `Status: implemented`, and the same in its row in `<specs>/README.md`.
-2. Append an `## Implementation` section to the spec — append only; never edit the requirements above it:
+2. The run added or changed a command (dev server, seed, full-stack start, a test script) → update the profile's *Modules* and *Live checks* in the same change and say so in the summary. Later runs trust the profile, not the README.
+3. Append an `## Implementation` section to the spec — append only; never edit the requirements above it:
 
    ```markdown
    ## Implementation
@@ -130,7 +131,7 @@ When a spec drives the run and verification passed:
    | AC-1 | `path/to/test.ts:42` | met |
    ```
 
-3. The plan's *Review handoff → Docs* isn't "none" → list the docs work in the summary and ask whether to write it now (in the main session) or leave it for later.
+4. The plan's *Review handoff → Docs* isn't "none" → list the docs work in the summary and ask whether to write it now (in the main session) or leave it for later.
 
 ## Phase 6 — Commit / PR gate
 

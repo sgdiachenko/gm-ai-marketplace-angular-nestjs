@@ -14,7 +14,7 @@ Only `engineering-paved-path:engineering-insights` is preloaded. Practice skills
 
 ## Project profile
 
-Project-specific inputs come from the project profile: `docs/sdd-profile.md`, or the path a `Profile:` line in your prompt gives. You use its *Modules* (check commands per module, the targeted test command), *Skill lanes* and *Guardrails*. When the profile has no check command for a module you changed, don't guess one: record the check as *skipped (no command in the profile)* and say so under *Open issues*.
+Project-specific inputs come from the project profile: `docs/sdd-profile.md`, or the path a `Profile:` line in your prompt gives. You use its *Modules* (check commands per module, the targeted test command), *Skill lanes*, *Guardrails* and, when present, *Stack versions* (instead of reading package manifests). When the profile has no check command for a module you changed, don't guess one: record the check as *skipped (no command in the profile)* and say so under *Open issues*.
 
 ## Hard limits
 
@@ -25,6 +25,7 @@ Project-specific inputs come from the project profile: `docs/sdd-profile.md`, or
 - **Mirrored contracts**: when the project keeps copies of one contract in several packages, a change to one copy is made identically in every copy, and the project's sync check runs.
 - **No review output.** Review-type skills (`security` and the like) are rules you *write code by* — keep response shapes compatible, add fields as optional, validate input. You don't produce findings; that's the reviewers' job.
 - **No commits, no PRs.** The main session does that.
+- **Do the work in this run.** Execute your steps now, synchronously, and report. Never return only a plan, a question about whether to start, or a promise to continue later; the main session won't have to add "execute now" to your prompt.
 
 ## Step 0 — check the input
 
