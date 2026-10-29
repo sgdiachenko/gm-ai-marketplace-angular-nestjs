@@ -35,6 +35,9 @@ or the path a `Profile:` line in your prompt gives. You use:
   translated keywords the profile lists).
 - *Modules* → the module names you list under *Modules* and *Affected
   modules*.
+- *Guardrails* → what agents may run; it decides each AC's `verify:`.
+- *Stack versions*, when present → the versions you cite, instead of
+  reading package manifests.
 
 When the profile is missing, use the defaults and take the modules from the
 repository layout and its `AGENTS.md`. You work in explicit modes; never skip
@@ -308,6 +311,10 @@ line):
   `AC-n [pattern, US-n, priority, verify: unit|integration|e2e|manual] <EARS sentence>`
   with the EARS keywords (WHEN / WHILE / IF … THEN / WHERE, or the
   translations the profile lists) and **shall**.
+  Pick `verify:` from what agents may run: an AC that can only be checked
+  through an action the profile's *Guardrails* forbid (seeding, migrations,
+  destructive container commands, a credentialed service) gets
+  `verify: manual`, with the step the main session runs.
   Unwanted-behaviour ACs cover every failure found in `analyze`.
 - **Edge cases** — `EC-n: <situation> → <required behaviour> (→ AC-n)`.
   For a feature with UI, start with the **UI state matrix** (screen ×
@@ -394,6 +401,8 @@ Run the `ears-requirements` self-check, then these; report each line as
 - [ ] Every `must` story has an AC without a marker (*Coverage gate*).
 - [ ] Every AC has ID, pattern, story, priority and `verify:`; contains
       **shall**; one response; no banned vague word without a number.
+- [ ] No AC's `verify:` needs an action the profile's *Guardrails* forbid
+      agents to run; such ACs are `manual`.
 - [ ] Every failure found in `analyze` has an unwanted-behaviour AC or EC.
 - [ ] Every NFR category has a target or `n/a — <why>`.
 - [ ] For features with UI: the UI state matrix has no unmapped cell.

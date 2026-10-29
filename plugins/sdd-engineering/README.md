@@ -85,6 +85,7 @@ The agents don't know your project's paths, commands or rules until you tell the
 |---|---|---|
 | Paths | specs, plans, retros, design images | `docs/specs/`, `docs/plans/`, `docs/retros/`, `docs/design/` |
 | Language | docs language; EARS keywords | English; `WHEN` / `WHILE` / `IF … THEN` / `WHERE`, or translated keywords listed in the profile |
+| Stack versions | the versions agents use instead of reading package manifests (optional) | agents read the manifests |
 | Modules | each module's path, package manager, full checks (what CI runs) and targeted test command | none — agents ask rather than guess |
 | Skill lanes | file globs → namespaced skills implementers must load | the `engineering-paved-path` skill matching the file type |
 | Architecture rules | rule sources (docs, linter configs), architecture checks, known-violation baseline | the paved-path architecture skills |
@@ -120,6 +121,8 @@ Use sdd-engineering:spec-creator in write mode. Research: <paths or reports>. An
 
 Review the draft. Ask for changes with `revise` mode, and when it is right: "Use sdd-engineering:spec-creator in approve mode: I approve 2026-10-14-order-cancel." An approved spec is never rewritten; a changed decision becomes a new spec with `Supersedes:`.
 
+Run each mode as a fresh `spec-creator` launch with the paths it needs (the spec, the analysis and research reports) instead of resuming the agent from the previous mode. A resumed agent re-reads its whole earlier context: in one measured run, the resumed chain cost about 1.7× the fresh one in new input tokens.
+
 ### 2. Plan
 
 ```text
@@ -127,6 +130,8 @@ Use sdd-engineering:implementation-planner, pass 1. Spec: docs/specs/2026-10-14-
 ```
 
 Save the pass-1 report, for example to `docs/plans/order-cancel.pass1.md`: pass 2 reads the `REC#` text from that file and won't restate it from memory. Answer the recommendations and choose the execution mode. Then run pass 2 with the report's path, `Mode: multi-agent` (or `single-agent`) and your `REC#` decisions. Save the approved plan to `docs/plans/order-cancel.md`.
+
+Start pass 2 as a fresh planner launch with that path rather than resuming pass 1, and give both passes the saved spec analysis report, so the planner reuses its repository facts instead of rediscovering them.
 
 ### 3. Run the plan
 

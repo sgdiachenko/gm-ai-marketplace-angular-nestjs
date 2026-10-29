@@ -58,3 +58,16 @@ Measured with `claude plugin details sdd-engineering` on Claude Code 2.1.299: ~1
 3. `scripts/run-evals.sh namespaces` and `scripts/run-evals.sh sdd-engineering` (paid).
 4. A manual chain on a small project: spec → plan → `/run-plan` → `/workflow-retro`.
 5. Push the branch and run `scripts/try-install.sh sdd-engineering`; the three dependencies must install with it.
+
+## 2.1.0 — rules from a run retro
+
+A run with two feature slices in parallel worktrees showed four things:
+- agents were fast, but the critical path went through human gates;
+- a review suggestion that later turned out to be a user-visible bug was dropped by an up-front "fix only CRITICAL/WARNING" rule;
+- the user's manual browser check found defects that tests and all three reviews missed;
+- resumed `spec-creator` and planner agents cost more than fresh launches with report paths.
+
+2.1.0 turns these into rules (see `CHANGELOG.md`). Still a note, not a rule: when a project runs slices in parallel worktrees, the lane prompt should pre-authorise its setup steps (sync with the main branch by merge, local env file, install, checks), so a lane doesn't sit waiting for a "go". That lives in the user's playbook, not in the plugin.
+
+The cost-workflow eval (`docs/COST-BASELINE.md`) was not re-run for 2.1.0. The prompt changes add rules, they do not change model choices, and their cost effect is unmeasured.
+
